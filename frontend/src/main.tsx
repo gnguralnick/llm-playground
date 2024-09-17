@@ -8,12 +8,19 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from 'react-router-dom';
+import Chat from './chat/chat.tsx';
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
     errorElement: <Error />,
+    children: [
+      {
+        path: '/chat/:chatId',
+        element: <Chat />,
+      }
+    ]
   }
 ])
 

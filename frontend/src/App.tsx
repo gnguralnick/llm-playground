@@ -1,23 +1,13 @@
-import Chat from "./chat/chat"
-import {useState} from 'react';
-import { Message } from "./types";
 import styles from './App.module.scss';
+import { Outlet } from 'react-router-dom';
+import Sidebar from './sidebar/sidebar';
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
-
-  const handleSendMessage = (message: string) => {
-    setMessages([
-      ...messages, 
-      {role: 'user', content: message},
-      {role: 'assistant', content: 'I am a simple assistant, I can only echo what you say.'}
-    ]);
-  };
-
-
+  
   return (
     <div className={styles.app}>
-      <Chat messages={messages} onSendMessage={handleSendMessage}/>
+      <Sidebar userId='c0aba09b-f57e-4998-bee6-86da8b796c5b'/>
+      <Outlet />
     </div>
   )
 }

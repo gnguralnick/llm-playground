@@ -8,17 +8,18 @@ import { Message } from '../types';
 
 const cx = clsx.bind(styles);
 
-type ChatProps = {
-    messages: Message[];
-    onSendMessage: (message: string) => void;
-}
-
-export default function Chat({messages, onSendMessage}: ChatProps) {
+export default function Chat() {
     const [input, setInput] = useState('');
+
+    const [messages, setMessages] = useState<Message[]>([]);
 
     const handleSend = () => {
         if (input.trim() !== '') {
-            onSendMessage(input);
+            setMessages([
+                ...messages, 
+                {role: 'user', content: input},
+                {role: 'assistant', content: 'I am a simple assistant, I can only echo what you say.'}
+            ]);
             setInput('');
         }
     };
