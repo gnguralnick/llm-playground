@@ -1,8 +1,27 @@
 from fastapi import FastAPI, HTTPException, Depends
-from .config import config
-from . import data
+from config import config
+import data
+from contextlib import asynccontextmanager
+from pydantic import UUID4
 
-app = FastAPI()
+system_user = None
+assistant_user = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global system_user
+    global assistant_user
+    db = data.SessionLocal()
+    system_user = data.crud.get_user_by_email(db, email=config.system_email)
+    if system_user is None:
+        system_user = data.crud.create_user(db, user=data.schemas.UserCreate(email=config.system_email, password='password'))
+    assistant_user = data.crud.get_user_by_email(db, email=config.assistant_email)
+    if assistant_user is None:
+        assistant_user = data.crud.create_user(db, user=data.schemas.UserCreate(email=config.assistant_email, password='password'))
+    db.close()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 def get_db():
     db = data.SessionLocal()
@@ -17,6 +36,26 @@ def create_user(user: data.schemas.UserCreate, db: data.Session = Depends(get_db
     if db_user:
         raise HTTPException(status_code=400, detail='Email already registered')
     return data.crud.create_user(db=db, user=user)
+
+@app.get('/chat/{chat_id}', response_model=data.schemas.Chat)
+def read_chat(chat_id: UUID4, db: data.Session = Depends(get_db)):
+    db_chat = data.crud.get_chat(db, chat_id=chat_id)
+    if db_chat is None:
+        raise HTTPException(status_code=404, detail='Chat not found')
+    return db_chat
+
+@app.post('/chat/', response_model=data.schemas.Chat)
+def create_chat(chat: data.schemas.ChatCreate, db: data.Session = Depends(get_db)):
+    return data.crud.create_chat(db=db, chat=chat, user_id="c0aba09b-f57e-4998-bee6-86da8b796c5b") # TODO: get user_id from token
+
+@app.post('/chat/{chat_id}/', response_model=data.schemas.MessageView)
+def create_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db)):
+    chat = data.crud.get_chat(db, chat_id)
+    if chat is None:
+        raise HTTPException(status_code=404, detail='Chat not found')
+    data.crud.create_message(db=db, message=message, user_id="c0aba09b-f57e-4998-bee6-86da8b796c5b", chat_id=chat_id)
+    response_msg = data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content="I'm a bot!") # TODO: implement bot
+    return data.crud.create_message(db=db, message=response_msg, user_id=assistant_user.id, chat_id=chat_id)
 
 @app.get('/')
 async def root():

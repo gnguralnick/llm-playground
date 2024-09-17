@@ -1,9 +1,10 @@
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
-from database import Base
+from data.database import Base
+from data.schemas import Role
 
 class User(Base):
     __tablename__ = 'user'
@@ -23,12 +24,12 @@ class Chat(Base):
     
     user = relationship('User', back_populates='chats')
     messages = relationship('Message', back_populates='chat')
-    
+
 class Message(Base):
     __tablename__ = 'message'
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    role = Column(String)
+    role = Column(Enum(Role))
     content = Column(String)
     user_id = Column(UUID(as_uuid=True), ForeignKey('user.id'))
     chat_id = Column(UUID(as_uuid=True), ForeignKey('chat.id'))

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, UUID4
 from enum import Enum
 
 class Role(Enum):
@@ -14,10 +14,18 @@ class MessageCreate(MessageBase):
     pass
 
 class Message(MessageBase):
-    id: int
-    user_id: int
-    chat_id: int
+    id: UUID4
+    user_id: UUID4
+    chat_id: UUID4
     chat: 'Chat'
+    
+    class Config:
+        orm_mode = True
+
+class MessageView(MessageBase):
+    id: UUID4
+    user_id: UUID4
+    chat_id: UUID4
     
     class Config:
         orm_mode = True
@@ -29,9 +37,9 @@ class ChatCreate(ChatBase):
     pass
 
 class Chat(ChatBase):
-    id: int
-    user_id: int
-    messages: list[Message] = []
+    id: UUID4
+    user_id: UUID4
+    messages: list[MessageView] = []
     
     class Config:
         orm_mode = True
@@ -43,7 +51,7 @@ class UserCreate(UserBase):
     password: str
     
 class User(UserBase):
-    id: int
+    id: UUID4
     chats: list[Chat] = []
     
     class Config:
