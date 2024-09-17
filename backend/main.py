@@ -37,6 +37,10 @@ def create_user(user: data.schemas.UserCreate, db: data.Session = Depends(get_db
         raise HTTPException(status_code=400, detail='Email already registered')
     return data.crud.create_user(db=db, user=user)
 
+@app.get('/chat/', response_model=list[data.schemas.ChatView])
+def read_chats(skip: int = 0, limit: int = 100, db: data.Session = Depends(get_db)):
+    return data.crud.get_chats(db, user_id="c0aba09b-f57e-4998-bee6-86da8b796c5b", skip=skip, limit=limit) # TODO: get user_id from token
+
 @app.get('/chat/{chat_id}', response_model=data.schemas.Chat)
 def read_chat(chat_id: UUID4, db: data.Session = Depends(get_db)):
     db_chat = data.crud.get_chat(db, chat_id=chat_id)

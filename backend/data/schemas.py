@@ -24,8 +24,6 @@ class Message(MessageBase):
 
 class MessageView(MessageBase):
     id: UUID4
-    user_id: UUID4
-    chat_id: UUID4
     
     class Config:
         orm_mode = True
@@ -40,6 +38,13 @@ class Chat(ChatBase):
     id: UUID4
     user_id: UUID4
     messages: list[MessageView] = []
+    
+    class Config:
+        orm_mode = True
+        
+class ChatView(ChatBase):
+    id: UUID4
+    user_id: UUID4
     
     class Config:
         orm_mode = True
