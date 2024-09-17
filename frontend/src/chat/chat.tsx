@@ -48,7 +48,7 @@ export default function Chat() {
 
     const mutation = useMutation({
         mutationFn: async (msg: Pick<Message, "content" | "role"> & Partial<Message>) => {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

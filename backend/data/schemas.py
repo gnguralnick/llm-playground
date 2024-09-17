@@ -1,7 +1,7 @@
 from pydantic import BaseModel, UUID4
 from enum import Enum
 
-class Role(Enum):
+class Role(str, Enum):
     USER = 'user'
     ASSISTANT = 'assistant'
     SYSTEM = 'system'
@@ -9,6 +9,9 @@ class Role(Enum):
 class MessageBase(BaseModel):
     role: Role
     content: str
+    
+    class Config:
+        use_enum_values = True
     
 class MessageCreate(MessageBase):
     pass
