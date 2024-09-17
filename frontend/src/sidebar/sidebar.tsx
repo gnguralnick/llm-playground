@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 
 const cx = clsx.bind(styles);
 
-type SidebarProps = {
+interface SidebarProps {
     userId: string;
 };
 
@@ -37,7 +37,7 @@ export default function Sidebar({userId}: SidebarProps) {
         queryKey: userId,
         queryFn: async () => {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/`);
-            return response.json();
+            return (await response.json()) as Partial<Chat>[];
         }
     });
 
@@ -50,10 +50,10 @@ export default function Sidebar({userId}: SidebarProps) {
                 },
                 body: JSON.stringify({ title: 'New Chat'})
             });
-            return response.json();
+            return (await response.json()) as Chat;
         },
         onSuccess: (data: Chat) => {
-            queryClient.invalidateQueries(userId);
+            void queryClient.invalidateQueries(userId);
             navigate(`/chat/${data.id}`);
         }
     });

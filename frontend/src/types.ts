@@ -1,17 +1,17 @@
-export type Message = {
+export interface Message {
     role: 'user' | 'assistant' | 'system';
     content: string;
     id: string;
 }
 
-export type Chat = {
+export interface Chat {
     id: string;
     user_id: string;
     title: string;
     messages?: Message[];
 }
 
-export type User = {
+export interface User {
     id: string;
     email: string;
     chats?: Chat[];

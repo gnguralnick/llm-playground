@@ -42,7 +42,7 @@ export default function Chat() {
         queryKey: chatId,
         queryFn: async () => {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}`);
-            return response.json();
+            return (await response.json()) as ChatType;
         }
     });
 
@@ -55,10 +55,10 @@ export default function Chat() {
                 },
                 body: JSON.stringify(msg)
             });
-            return response.json();
+            return (await response.json()) as Message;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries(chatId);
+            void queryClient.invalidateQueries(chatId);
         }
     });
 
@@ -96,7 +96,7 @@ export default function Chat() {
         );
     };
 
-    if (isLoading) {
+    if (isLoading || !data) {
         return <ChatLoading />
     }
 
@@ -104,8 +104,8 @@ export default function Chat() {
         return <div>{(error as Error)?.message || (error as { statusText: string })?.statusText}</div>;
     }
 
-    const chat = data as ChatType;
-    const messages = chat.messages || [];
+    const chat = data;
+    const messages = chat.messages ?? [];
 
   
     return (
