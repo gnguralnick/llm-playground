@@ -3,23 +3,71 @@ import styles from './chat.module.scss';
 import clsx from 'clsx';
 import { ArrowUp } from '../assets/icons';
 import { Message } from '../types';
-
-
+import { useParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { Chat as ChatType } from '../types';
 
 const cx = clsx.bind(styles);
 
+function ChatLoading() {
+    return (
+        <div className={styles.chatContainer}>
+            <div className={styles.messagesContainer}>
+                {Array.from(Array(10).keys()).map((index) => (
+                    <div key={index} className={cx(styles.messageContainer, {
+                        [styles.user]: index % 2 === 0,
+                        [styles.assistant]: index % 2 === 1
+                    })}>
+                        <div className={styles.messageLoading} />
+                    </div>
+                ))}
+            </div>
+            <div className={styles.inputContainer}>
+                <input type="text" className={styles.input} placeholder="Type a message..." disabled />
+                <button className={styles.button} disabled>
+                    <ArrowUp />
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export default function Chat() {
     const [input, setInput] = useState('');
+    
+    const { chatId } = useParams();
+    const queryClient = useQueryClient();
 
-    const [messages, setMessages] = useState<Message[]>([]);
+    const {isLoading, isError, error, data } = useQuery({
+        queryKey: chatId,
+        queryFn: async () => {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}`);
+            return response.json();
+        }
+    });
+
+    const mutation = useMutation({
+        mutationFn: async (msg: Pick<Message, "content" | "role"> & Partial<Message>) => {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(msg)
+            });
+            return response.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(chatId);
+        }
+    });
 
     const handleSend = () => {
         if (input.trim() !== '') {
-            setMessages([
-                ...messages, 
-                {role: 'user', content: input},
-                {role: 'assistant', content: 'I am a simple assistant, I can only echo what you say.'}
-            ]);
+            mutation.mutate({
+                role: 'user',
+                content: input
+            });
             setInput('');
         }
     };
@@ -47,6 +95,18 @@ export default function Chat() {
             </div>
         );
     };
+
+    if (isLoading) {
+        return <ChatLoading />
+    }
+
+    if (isError) {
+        return <div>{(error as Error)?.message || (error as { statusText: string })?.statusText}</div>;
+    }
+
+    const chat = data as ChatType;
+    const messages = chat.messages || [];
+
   
     return (
       <div className={styles.chatContainer}>
