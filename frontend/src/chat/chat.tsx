@@ -39,7 +39,7 @@ export default function Chat({messages, onSendMessage}: ChatProps) {
                     [styles.user]: message.role === 'user',
                     [styles.assistant]: message.role === 'assistant'
             })}>
-                {/* {message.role === 'assistant' && <Image className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>} */}
+                {message.role === 'assistant' && <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>}
                 <div className={cx(styles.message)}>
                     {message.content}
                 </div>
