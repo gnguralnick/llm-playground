@@ -8,6 +8,9 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from 'react-router-dom';
+
+import { QueryClient, QueryClientProvider } from 'react-query';
+
 import Chat from './chat/chat.tsx';
 
 const router = createBrowserRouter([
@@ -22,10 +25,14 @@ const router = createBrowserRouter([
       }
     ]
   }
-])
+]);
+
+const queryClient = new QueryClient();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
   </StrictMode>,
 );
