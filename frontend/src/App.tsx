@@ -1,34 +1,24 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import Chat from "./chat/chat"
+import {useState} from 'react';
+import { Message } from "./types";
+import styles from './App.module.scss';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  const handleSendMessage = (message: string) => {
+    setMessages([
+      ...messages, 
+      {role: 'user', content: message},
+      {role: 'assistant', content: 'I am a simple assistant, I can only echo what you say.'}
+    ]);
+  };
+
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className={styles.app}>
+      <Chat messages={messages} onSendMessage={handleSendMessage}/>
+    </div>
   )
 }
 
