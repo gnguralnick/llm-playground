@@ -34,6 +34,7 @@ function ChatLoading() {
 
 export default function Chat() {
     const [input, setInput] = useState('');
+    const [showSystem, setShowSystem] = useState(false);
     
     const { chatId } = useParams();
     const queryClient = useQueryClient();
@@ -79,8 +80,13 @@ export default function Chat() {
     };
 
     const renderMessage = (message: {role: string, content: string}, index: number) => {
-        if (message.role !== 'user' && message.role !== 'assistant') {
-            return null;
+        if (message.role === 'system') {
+            return <div key={index} className={cx(styles.messageContainer, styles.system)}>
+                <button onClick={() => setShowSystem(!showSystem)} className={styles.systemButton}>
+                    {showSystem ? 'Hide' : 'Show'} System Prompt
+                </button>
+                {showSystem && message.content}
+            </div>;
         }
 
         return (

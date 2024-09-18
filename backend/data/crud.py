@@ -26,7 +26,9 @@ def get_chats(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     return db.query(models.Chat).filter(models.Chat.user_id == user_id).offset(skip).limit(limit).all()
 
 def create_chat(db: Session, chat: schemas.ChatCreate, user_id: int):
-    db_chat = models.Chat(**chat.model_dump(), user_id=user_id)
+    chat = chat.model_dump()
+    chat.pop('system_prompt', None)
+    db_chat = models.Chat(**chat, user_id=user_id)
     db.add(db_chat)
     db.commit()
     db.refresh(db_chat)

@@ -49,6 +49,11 @@
             max-width: 100%;
         }
     }
+
+    &.system {
+        background-color: #1c1b1b3a;
+        border-radius: 10px;
+    }
 }
 
 .messageLoading {
@@ -71,6 +76,10 @@
     border-radius: 4px;
     border: 1px solid #ccc;
     background-color: #424649;
+
+    &::placeholder {
+        color: white;
+    }
 }
 
 .button {

@@ -61,7 +61,10 @@ def read_chat(chat_id: UUID4, db: data.Session = Depends(get_db)):
 
 @app.post('/chat/', response_model=data.schemas.Chat)
 def create_chat(chat: data.schemas.ChatCreate, db: data.Session = Depends(get_db)):
-    return data.crud.create_chat(db=db, chat=chat, user_id="c0aba09b-f57e-4998-bee6-86da8b796c5b") # TODO: get user_id from token
+    chat_db = data.crud.create_chat(db=db, chat=chat, user_id="c0aba09b-f57e-4998-bee6-86da8b796c5b") # TODO: get user_id from token
+    system_msg = data.schemas.MessageCreate(role=data.schemas.Role.SYSTEM, content=chat.system_prompt)
+    data.crud.create_message(db=db, message=system_msg, user_id=system_user.id, chat_id=chat_db.id)
+    return chat_db
 
 @app.put('/chat/{chat_id}', response_model=data.schemas.Chat)
 def update_chat(chat_id: UUID4, chat: data.schemas.ChatCreate, db: data.Session = Depends(get_db)):

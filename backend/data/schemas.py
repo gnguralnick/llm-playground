@@ -35,7 +35,7 @@ class ChatBase(BaseModel):
     title: str
     
 class ChatCreate(ChatBase):
-    pass
+    system_prompt: str = 'You are a helpful assistant.'
 
 class Chat(ChatBase):
     id: UUID4
