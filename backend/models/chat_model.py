@@ -20,20 +20,21 @@ class AssistantMessage(Message):
 class SystemMessage(Message):
     role: Role = Role.SYSTEM
 
-class ChatModel(ABC):
+class ChatModel(ABC, BaseModel):
     
-    def __init__(self, model_name) -> None:
+    api_name: str
+    human_name: str
+    
+    def __init__(self) -> None:
         super().__init__()
-        self.model_name = model_name
 
     @abstractmethod
     def chat(self, messages: list[Message]) -> AssistantMessage:
         pass
     
-def get_chat_model(model_name: str) -> ChatModel:
-    from .openai_model import OpenAIModel
+class ModelInfo(BaseModel):
+    human_name: str
+    api_name: str
     
-    if model_name.find('gpt') != -1:
-        return OpenAIModel(model_name)
-    else:
-        raise ValueError('Model not found')
+class ModelInfoFull(BaseModel):
+    model: ChatModel

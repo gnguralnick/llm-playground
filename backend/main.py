@@ -5,7 +5,7 @@ import data
 from contextlib import asynccontextmanager
 from pydantic import UUID4
 
-from models import get_chat_model
+from models import get_chat_model, get_models, ModelInfo
 
 system_user = None
 assistant_user = None
@@ -100,6 +100,10 @@ def update_message(chat_id: UUID4, message_id: UUID4, message: data.schemas.Mess
     if db_message.chat_id != chat_id:
         raise HTTPException(status_code=400, detail='Message does not belong to chat')
     return data.crud.update_message(db=db, message=message, message_id=message_id)
+
+@app.get('/models/', response_model=list[ModelInfo])
+def read_models():
+    return get_models()
 
 @app.get('/')
 async def root():
