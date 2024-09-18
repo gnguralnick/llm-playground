@@ -38,6 +38,23 @@
     &.active {
         background-color: #888;
     }
+
+    .chatName {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .editBtn {
+        background: none;
+        border: none;
+        transition: background-color 0.3s ease;
+        border-radius: 8px;
+
+        &:hover {
+            cursor: pointer;
+            background-color: #444444;
+        }
+    }
 }
 
 .loadingChat {

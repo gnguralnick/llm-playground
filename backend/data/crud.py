@@ -32,6 +32,13 @@ def create_chat(db: Session, chat: schemas.ChatCreate, user_id: int):
     db.refresh(db_chat)
     return db_chat
 
+def update_chat(db: Session, chat_id: int, chat: schemas.ChatCreate):
+    db_chat = db.query(models.Chat).filter(models.Chat.id == chat_id).first()
+    db_chat.title = chat.title
+    db.commit()
+    db.refresh(db_chat)
+    return db_chat
+
 def create_message(db: Session, message: schemas.MessageCreate, user_id: int, chat_id: int):
     db_message = models.Message(**message.model_dump(), user_id=user_id, chat_id=chat_id)
     db.add(db_message)
