@@ -1,0 +1,36 @@
+.chatOptions {
+    padding: 0 1rem;
+
+    .form {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .formSubmit {
+        transition: background-color 0.3s ease;
+        border: none;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+
+        &:hover {
+            background-color: #797979;
+        }
+    }
+
+    .formItem {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 100%;
+        margin-bottom: 1rem;
+
+        input {
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 0.25rem;
+            font-size: 1rem;
+            background-color: #4e4e4e;
+        }
+    }
+}

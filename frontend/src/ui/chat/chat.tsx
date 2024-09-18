@@ -10,6 +10,7 @@ import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useGetChat, useSendMessage } from '../../hooks';
+import ChatOptions from '../chatOptions/chatOptions';
 
 const cx = clsx.bind(styles);
 
@@ -108,24 +109,8 @@ export default function Chat() {
         );
     };
 
-    if (isLoading || !chat) {
-        return <ChatLoading />
-    }
-
-    if (isError) {
-        return <div>{(error as Error)?.message || (error as { statusText: string })?.statusText}</div>;
-    }
-
-    const messages = chat.messages ?? [];
-
-  
-    return (
-      <div className={styles.chatContainer}>
-        <div className={styles.messagesContainer}>
-            {messages.length > 0 && messages.map(renderMessage)}
-            {mutation.isLoading && mutation.variables && renderMessage(mutation.variables, messages.length)}
-        </div>
-        <div className={styles.inputContainer}>
+    const renderInput = () => {
+        return <div className={styles.inputContainer}>
           <input
             type="text"
             value={input}
@@ -137,7 +122,34 @@ export default function Chat() {
           <button onClick={handleSend} className={styles.button}>
             <ArrowUp />
           </button>
+        </div>;
+    }
+
+    if (isLoading || !chat) {
+        return <ChatLoading />
+    }
+
+    if (isError) {
+        return <div>{(error as Error)?.message || (error as { statusText: string })?.statusText}</div>;
+    }
+
+    const messages = chat.messages ?? [];
+
+    if (messages.length === 0 || (messages.length === 1 && messages[0].role === 'system')) {
+        return <div className={styles.chatContainer}>
+            <ChatOptions />
+            {renderInput()}
+        </div>;
+    }
+
+  
+    return (
+      <div className={styles.chatContainer}>
+        <div className={styles.messagesContainer}>
+            {messages.length > 0 && messages.map(renderMessage)}
+            {mutation.isLoading && mutation.variables && renderMessage(mutation.variables, messages.length)}
         </div>
+        {renderInput()}
       </div>
     );
 }

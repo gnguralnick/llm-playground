@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { Message, Chat, validateMessage } from './types';
-import { validateChat } from './types';
+import { Message, Chat } from './types';
 
 async function backendFetch(url: string, options?: RequestInit) {
     const response = await fetch(import.meta.env.VITE_BACKEND_URL + url, options);
@@ -17,8 +16,7 @@ export function useGetChat(chatId: string) {
         queryFn: async () => {
             const response = await backendFetch(`/chat/${chatId}`);
             const json: unknown = await response?.json();
-            validateChat(json);
-            const chat: Chat = json;
+            const chat: Chat = json as Chat;
             return chat;
         }
     });
@@ -30,12 +28,6 @@ export function useGetChats(userId: string) {
         queryFn: async () => {
             const response = await backendFetch(`/chat/`);
             const json: unknown = await response?.json();
-            if (!Array.isArray(json)) {
-                throw new Error('Invalid chat data');
-            }
-            for (const chat of json) {
-                validateChat(chat);
-            }
             const chats: Chat[] = json as Chat[];
             return chats;
         }
@@ -54,8 +46,7 @@ export function useSendMessage(chatId: string) {
                 body: JSON.stringify(msg)
             });
             const json: unknown = await response.json();
-            validateMessage(json);
-            return json;
+            return json as Message;
         },
         onSuccess: () => {
             void queryClient.invalidateQueries(chatId);
@@ -75,8 +66,7 @@ export function useCreateChat(navigate?: (url: string) => void) {
                 body: JSON.stringify({ title: 'New Chat'})
             });
             const json: unknown = await response.json();
-            validateChat(json);
-            return json;
+            return json as Chat;
         },
         onSuccess: (data: Chat) => {
             void queryClient.invalidateQueries(data.user_id);
@@ -99,8 +89,7 @@ export function useEditChat() {
                 body: JSON.stringify(chat)
             });
             const json: unknown = await response.json();
-            validateChat(json);
-            return json;
+            return json as Chat;
         },
         onSuccess: () => {
             void queryClient.invalidateQueries();
@@ -116,8 +105,7 @@ export function useDeleteChat() {
                 method: 'DELETE'
             });
             const json: unknown = await response.json();
-            validateChat(json);
-            return json;
+            return json as Chat;
         },
         onSuccess: () => {
             void queryClient.invalidateQueries();
