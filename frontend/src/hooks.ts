@@ -77,7 +77,7 @@ export function useCreateChat(navigate?: (url: string) => void) {
     });
 }
 
-export function useEditChat() {
+export function useEditChat(invalidateUserQuery?: boolean, invalidateChatQuery?: boolean) {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (chat: Chat) => {
@@ -91,8 +91,13 @@ export function useEditChat() {
             const json: unknown = await response.json();
             return json as Chat;
         },
-        onSuccess: () => {
-            void queryClient.invalidateQueries();
+        onSuccess: (data) => {
+            if (invalidateChatQuery) {
+                void queryClient.invalidateQueries(data.id);
+            }
+            if (invalidateUserQuery) {
+                void queryClient.invalidateQueries(data.user_id);
+            }
         }
     });
 }
@@ -105,10 +110,10 @@ export function useDeleteChat() {
                 method: 'DELETE'
             });
             const json: unknown = await response.json();
-            return json as Chat;
+            return json;
         },
         onSuccess: () => {
-            void queryClient.invalidateQueries();
+            void queryClient.invalidateQueries(); // TODO: this should be invalidateQueries(userId)
         }
     });
 }

@@ -9,6 +9,7 @@ export interface Chat {
     user_id: string;
     title: string;
     messages?: Message[];
+    system_prompt?: string;
 }
 
 export interface User {

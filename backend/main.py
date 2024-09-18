@@ -80,7 +80,7 @@ def delete_chat(chat_id: UUID4, db: data.Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail='Chat not found')
     db.delete(db_chat)
     db.commit()
-    return {'message': 'Chat deleted'}
+    return {'message': 'Chat deleted', }
 
 @app.post('/chat/{chat_id}/', response_model=data.schemas.MessageView)
 def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db)):
@@ -91,6 +91,15 @@ def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.S
     response_msg = model.chat(chat.messages + [message])
     data.crud.create_message(db=db, message=message, user_id="c0aba09b-f57e-4998-bee6-86da8b796c5b", chat_id=chat_id)
     return data.crud.create_message(db=db, message=response_msg, user_id=assistant_user.id, chat_id=chat_id)
+
+@app.put('/chat/{chat_id}/', response_model=data.schemas.MessageView)
+def update_message(chat_id: UUID4, message_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db)):
+    db_message = data.crud.get_message(db, message_id)
+    if db_message is None:
+        raise HTTPException(status_code=404, detail='Message not found')
+    if db_message.chat_id != chat_id:
+        raise HTTPException(status_code=400, detail='Message does not belong to chat')
+    return data.crud.update_message(db=db, message=message, message_id=message_id)
 
 @app.get('/')
 async def root():

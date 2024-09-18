@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import styles from './chat.module.scss';
 import clsx from 'clsx';
 import { ArrowUp } from '../assets/icons';
@@ -9,8 +9,9 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { useGetChat, useSendMessage } from '../../hooks';
+import { useEditChat, useGetChat, useSendMessage } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
+import { Chat as ChatType } from '../../types';
 
 const cx = clsx.bind(styles);
 
@@ -40,26 +41,39 @@ function ChatLoading() {
 export default function Chat() {
     const [input, setInput] = useState('');
     const [showSystem, setShowSystem] = useState(false);
+    const [editing, setEditing] = useState<ChatType | null>(null);
     
     const { chatId } = useParams();
 
     const {isLoading, isError, error, data: chat } = useGetChat(chatId!);
 
-    const mutation = useSendMessage(chatId!);
+    useEffect(() => {
+        if (chat?.messages?.length === 0 || (chat?.messages?.length === 1 && chat?.messages[0]?.role === 'system')) {
+            setEditing({...chat, system_prompt: chat.messages.find(m => m.role === 'system')?.content});
+        }
+    }, [chat]);
 
-    const handleSend = () => {
+    const sendMessageMutation = useSendMessage(chatId!);
+    const editChatMutation = useEditChat(true, false);
+
+    const handleSend = async () => {
         if (input.trim() !== '') {
-            mutation.mutate({
-                role: 'user',
-                content: input
-            });
+            if (editing) {
+                await editChatMutation.mutateAsync(editing);
+                setEditing(null);
+            }
+            const msg = input.trim();
             setInput('');
+            await sendMessageMutation.mutateAsync({
+                role: 'user',
+                content: msg
+            });
         }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
-            handleSend();
+            void handleSend();
         }
     };
 
@@ -119,7 +133,7 @@ export default function Chat() {
             className={styles.input}
             placeholder="Type a message..."
           />
-          <button onClick={handleSend} className={styles.button}>
+          <button onClick={() => handleSend} className={styles.button}>
             <ArrowUp />
           </button>
         </div>;
@@ -135,9 +149,12 @@ export default function Chat() {
 
     const messages = chat.messages ?? [];
 
-    if (messages.length === 0 || (messages.length === 1 && messages[0].role === 'system')) {
+    if (editing) {
         return <div className={styles.chatContainer}>
-            <ChatOptions />
+            <ChatOptions 
+                chat={editing} 
+                updateChat={setEditing}
+                />
             {renderInput()}
         </div>;
     }
@@ -147,7 +164,7 @@ export default function Chat() {
       <div className={styles.chatContainer}>
         <div className={styles.messagesContainer}>
             {messages.length > 0 && messages.map(renderMessage)}
-            {mutation.isLoading && mutation.variables && renderMessage(mutation.variables, messages.length)}
+            {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
         </div>
         {renderInput()}
       </div>
