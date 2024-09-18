@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from database import Base, SQLALCHEMY_DATABASE_URL
-from models import *
+from data.models import *
 
 from alembic import context
 

@@ -9,6 +9,7 @@ class Role(str, Enum):
 class MessageBase(BaseModel):
     role: Role
     content: str
+    model: str | None = None
     
     class Config:
         use_enum_values = True
@@ -33,6 +34,7 @@ class MessageView(MessageBase):
         
 class ChatBase(BaseModel):
     title: str
+    default_model: str
     
 class ChatCreate(ChatBase):
     system_prompt: str = """You are a helpful assistant. Format responses using Markdown. 

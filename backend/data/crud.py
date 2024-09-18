@@ -40,6 +40,7 @@ def create_chat(db: Session, chat: schemas.ChatCreate, user_id: int):
 def update_chat(db: Session, chat_id: int, chat: schemas.ChatCreate):
     db_chat = db.query(models.Chat).filter(models.Chat.id == chat_id).first()
     db_chat.title = chat.title
+    db_chat.default_model = chat.default_model
     db_system_msg = db.query(models.Message).filter(models.Message.chat_id == chat_id and models.Message.role == schemas.Role.SYSTEM).first()
     db_system_msg.content = chat.system_prompt
     db.commit()
@@ -49,14 +50,6 @@ def update_chat(db: Session, chat_id: int, chat: schemas.ChatCreate):
 def create_message(db: Session, message: schemas.MessageCreate, user_id: int, chat_id: int):
     db_message = models.Message(**message.model_dump(), user_id=user_id, chat_id=chat_id)
     db.add(db_message)
-    db.commit()
-    db.refresh(db_message)
-    return db_message
-
-def update_message(db: Session, message_id: int, message: schemas.MessageCreate):
-    db_message = db.query(models.Message).filter(models.Message.id == message_id).first()
-    db_message.content = message.content
-    db_message.role = message.role
     db.commit()
     db.refresh(db_message)
     return db_message
