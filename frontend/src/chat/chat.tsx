@@ -147,6 +147,7 @@ export default function Chat() {
       <div className={styles.chatContainer}>
         <div className={styles.messagesContainer}>
             {messages.length > 0 && messages.map(renderMessage)}
+            {mutation.isLoading && mutation.variables && renderMessage(mutation.variables, messages.length)}
         </div>
         <div className={styles.inputContainer}>
           <input
