@@ -11,7 +11,7 @@ import {
 
 import { QueryClient, QueryClientProvider } from 'react-query';
 
-import Chat from './chat/chat.tsx';
+import Chat from './ui/chat/chat.tsx';
 
 const router = createBrowserRouter([
   {

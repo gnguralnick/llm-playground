@@ -3,9 +3,9 @@ import styles from './sidebar.module.scss';
 import clsx from 'clsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faPencil, faX } from '@fortawesome/free-solid-svg-icons';
-import { Chat } from '../types';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { Chat } from '../../types';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCreateChat, useDeleteChat, useEditChat, useGetChats } from '../../hooks';
 
 
 const cx = clsx.bind(styles);
@@ -31,64 +31,18 @@ function SidebarLoading() {
 export default function Sidebar({userId}: SidebarProps) {
 
     const { chatId: activeChat } = useParams();
-    const queryClient = useQueryClient();
     const navigate = useNavigate();
 
     const [editing, setEditing] = useState<Chat | null>(null);
     const editInputRef = useRef<HTMLInputElement>(null);
 
-    const { isLoading, isError, error, data } = useQuery({
-        queryKey: userId,
-        queryFn: async () => {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/`);
-            return (await response.json()) as Partial<Chat>[];
-        }
-    });
+    const { isLoading, isError, error, data: chats } = useGetChats(userId);
 
-    const createChatMutation = useMutation({
-        mutationFn: async () => {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ title: 'New Chat'})
-            });
-            return (await response.json()) as Chat;
-        },
-        onSuccess: (data: Chat) => {
-            void queryClient.invalidateQueries(userId);
-            navigate(`/chat/${data.id}`);
-        }
-    });
+    const createChatMutation = useCreateChat(navigate);
 
-    const editChatMutation = useMutation({
-        mutationFn: async (chat: Chat) => {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chat.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(chat)
-            });
-            return (await response.json()) as Chat;
-        },
-        onSuccess: () => {
-            void queryClient.invalidateQueries(userId);
-        }
-    });
+    const editChatMutation = useEditChat();
 
-    const deleteChatMutation = useMutation({
-        mutationFn: async (chat: Chat) => {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chat.id}`, {
-                method: 'DELETE'
-            });
-            return (await response.json()) as Chat;
-        },
-        onSuccess: () => {
-            void queryClient.invalidateQueries(userId);
-        }
-    });
+    const deleteChatMutation = useDeleteChat();
 
     const onEditSubmit = useCallback(() => {
         if (!editing) { return; }
@@ -113,15 +67,13 @@ export default function Sidebar({userId}: SidebarProps) {
         };
     }, [editing, onEditSubmit]);
 
-    if (isLoading) {
+    if (isLoading || !chats) {
         return <SidebarLoading />;
     }
 
     if (isError) {
         return <div>{(error as Error)?.message || (error as { statusText: string })?.statusText}</div>;
     }
-
-    const chats = data as Chat[];
 
     return (
         <div className={cx(styles.sidebar)}>

@@ -2,16 +2,14 @@ import { useState } from 'react';
 import styles from './chat.module.scss';
 import clsx from 'clsx';
 import { ArrowUp } from '../assets/icons';
-import { Message } from '../types';
 import { useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { Chat as ChatType } from '../types';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useGetChat, useSendMessage } from '../../hooks';
 
 const cx = clsx.bind(styles);
 
@@ -43,31 +41,10 @@ export default function Chat() {
     const [showSystem, setShowSystem] = useState(false);
     
     const { chatId } = useParams();
-    const queryClient = useQueryClient();
 
-    const {isLoading, isError, error, data } = useQuery({
-        queryKey: chatId,
-        queryFn: async () => {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}`);
-            return (await response.json()) as ChatType;
-        }
-    });
+    const {isLoading, isError, error, data: chat } = useGetChat(chatId!);
 
-    const mutation = useMutation({
-        mutationFn: async (msg: Pick<Message, "content" | "role"> & Partial<Message>) => {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(msg)
-            });
-            return (await response.json()) as Message;
-        },
-        onSuccess: () => {
-            void queryClient.invalidateQueries(chatId);
-        }
-    });
+    const mutation = useSendMessage(chatId!);
 
     const handleSend = () => {
         if (input.trim() !== '') {
@@ -131,7 +108,7 @@ export default function Chat() {
         );
     };
 
-    if (isLoading || !data) {
+    if (isLoading || !chat) {
         return <ChatLoading />
     }
 
@@ -139,7 +116,6 @@ export default function Chat() {
         return <div>{(error as Error)?.message || (error as { statusText: string })?.statusText}</div>;
     }
 
-    const chat = data;
     const messages = chat.messages ?? [];
 
   
