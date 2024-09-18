@@ -102,14 +102,14 @@ export default function Chat() {
             })}>
                 {message.role === 'assistant' && <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>}
                 <div className={cx(styles.message)}>
-                    <Markdown
+                    {message.role === 'assistant' ? <Markdown
                         children={message.content}
                         remarkPlugins={[remarkGfm, remarkMath]}
                         rehypePlugins={[rehypeKatex]}
                         className={styles.markdown}
                         components={{
                         code(props) {
-                            const {children, className, node, ...rest} = props
+                            const {children, className, ...rest} = props
                             const match = /language-(\w+)/.exec(className ?? '')
                             return match ? (
                             <SyntaxHighlighter
@@ -124,8 +124,8 @@ export default function Chat() {
                             </code>
                             )
                         }
-                        }}
-                    />
+                        }}/>
+                    : message.content}
                 </div>
             </div>
         );

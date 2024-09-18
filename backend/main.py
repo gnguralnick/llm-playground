@@ -5,7 +5,7 @@ import data
 from contextlib import asynccontextmanager
 from pydantic import UUID4
 
-from model import generate_completion
+from models import get_chat_model
 
 system_user = None
 assistant_user = None
@@ -87,8 +87,9 @@ def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.S
     chat = data.crud.get_chat(db, chat_id)
     if chat is None:
         raise HTTPException(status_code=404, detail='Chat not found')
+    model = get_chat_model('gpt-4o-mini') # TODO: get model from chat
+    response_msg = model.chat(chat.messages + [message])
     data.crud.create_message(db=db, message=message, user_id="c0aba09b-f57e-4998-bee6-86da8b796c5b", chat_id=chat_id)
-    response_msg = generate_completion(chat=chat, message=message)
     return data.crud.create_message(db=db, message=response_msg, user_id=assistant_user.id, chat_id=chat_id)
 
 @app.get('/')
