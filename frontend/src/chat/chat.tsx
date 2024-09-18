@@ -6,6 +6,12 @@ import { Message } from '../types';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { Chat as ChatType } from '../types';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
+import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 const cx = clsx.bind(styles);
 
@@ -96,7 +102,30 @@ export default function Chat() {
             })}>
                 {message.role === 'assistant' && <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>}
                 <div className={cx(styles.message)}>
-                    {message.content}
+                    <Markdown
+                        children={message.content}
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                        className={styles.markdown}
+                        components={{
+                        code(props) {
+                            const {children, className, node, ...rest} = props
+                            const match = /language-(\w+)/.exec(className ?? '')
+                            return match ? (
+                            <SyntaxHighlighter
+                                PreTag="div"
+                                children={String(children).replace(/\n$/, '')}
+                                language={match[1]}
+                                style={materialDark}
+                            />
+                            ) : (
+                            <code {...rest} className={className}>
+                                {children}
+                            </code>
+                            )
+                        }
+                        }}
+                    />
                 </div>
             </div>
         );

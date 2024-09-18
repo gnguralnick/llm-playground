@@ -35,7 +35,9 @@ class ChatBase(BaseModel):
     title: str
     
 class ChatCreate(ChatBase):
-    system_prompt: str = 'You are a helpful assistant.'
+    system_prompt: str = """You are a helpful assistant. Format responses using Markdown. 
+    You may use latex by wrapping in $ symbols (for inline) or $$ symbols (for block).
+    DO NOT use brackets or parentheses to denote latex; you MUST use $ or $$."""
 
 class Chat(ChatBase):
     id: UUID4

@@ -29,6 +29,10 @@
         padding: 10px;
         border-radius: 10px;
         max-width: 70%;
+
+        .markdown > * {
+            margin: 0;
+        }
     }
 
     &.user {
