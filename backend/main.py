@@ -70,6 +70,15 @@ def update_chat(chat_id: UUID4, chat: data.schemas.ChatCreate, db: data.Session 
         raise HTTPException(status_code=404, detail='Chat not found')
     return data.crud.update_chat(db=db, chat=chat, chat_id=chat_id)
 
+@app.delete('/chat/{chat_id}')
+def delete_chat(chat_id: UUID4, db: data.Session = Depends(get_db)):
+    db_chat = data.crud.get_chat(db, chat_id)
+    if db_chat is None:
+        raise HTTPException(status_code=404, detail='Chat not found')
+    db.delete(db_chat)
+    db.commit()
+    return {'message': 'Chat deleted'}
+
 @app.post('/chat/{chat_id}/', response_model=data.schemas.MessageView)
 def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db)):
     chat = data.crud.get_chat(db, chat_id)

@@ -2,7 +2,7 @@ import {NavLink, useParams, useNavigate} from 'react-router-dom';
 import styles from './sidebar.module.scss';
 import clsx from 'clsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faPencil } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faPencil, faX } from '@fortawesome/free-solid-svg-icons';
 import { Chat } from '../types';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -78,6 +78,18 @@ export default function Sidebar({userId}: SidebarProps) {
         }
     });
 
+    const deleteChatMutation = useMutation({
+        mutationFn: async (chat: Chat) => {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chat.id}`, {
+                method: 'DELETE'
+            });
+            return (await response.json()) as Chat;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries(userId);
+        }
+    });
+
     const onEditSubmit = useCallback(() => {
         if (!editing) { return; }
         editChatMutation.mutate(editing);
@@ -136,11 +148,19 @@ export default function Sidebar({userId}: SidebarProps) {
                     return <NavLink to={`/chat/${chat.id}`} key={chat.id} className={cx(styles.chat, {
                         [styles.active]: chat.id === activeChat
                     })}>
-                        <li className={styles.chatName}>
-                            {chat.title}
-                            <button className={styles.editBtn} onClick={(e) => {e.stopPropagation(); e.preventDefault(); setEditing(chat);}}>
-                                <FontAwesomeIcon icon={faPencil} />
-                            </button>
+                        <li className={styles.chatNameCtr}>
+                            <p className={styles.chatName}>
+                                {chat.title}
+                            </p>
+                            <div className={styles.chatButtons}>
+                                <button className={styles.chatBtn} onClick={(e) => {e.stopPropagation(); e.preventDefault(); setEditing(chat);}}>
+                                    <FontAwesomeIcon icon={faPencil} />
+                                </button>
+                                <button className={styles.chatBtn} onClick={(e) => {e.stopPropagation(); e.preventDefault(); deleteChatMutation.mutate(chat);}}>
+                                    <FontAwesomeIcon icon={faX} />
+                                </button>
+                            </div>
+
                         </li>
                     </NavLink>;
                 })}

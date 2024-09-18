@@ -24,6 +24,7 @@
     padding: 15px;
     border-radius: 8px;
     transition: background-color 0.3s ease;
+    height: 1.5rem;
 
     background-color: transparent;
 
@@ -39,16 +40,29 @@
         background-color: #888;
     }
 
-    .chatName {
+    .chatNameCtr {
         display: flex;
         justify-content: space-between;
     }
 
-    .editBtn {
+    .chatName {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .chatButtons {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .chatBtn {
         background: none;
         border: none;
         transition: background-color 0.3s ease;
         border-radius: 8px;
+        padding: 3px 5px;
 
         &:hover {
             cursor: pointer;
