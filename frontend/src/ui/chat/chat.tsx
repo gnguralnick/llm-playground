@@ -48,11 +48,19 @@ export default function Chat() {
     const {isLoading: chatIsLoading, isError: chatIsError, error: chatError, data: chat } = useGetChat(chatId!);
     const {isLoading: modelsAreLoading, data: models} = useGetModels();
 
+    const setEditingChat = (chat: ChatType) => {
+        setEditing({...chat, system_prompt: chat.messages?.find(m => m.role === 'system')?.content});
+    }
+
     useEffect(() => {
         if (chat?.messages?.length === 0 || (chat?.messages?.length === 1 && chat?.messages[0]?.role === 'system')) {
-            setEditing({...chat, system_prompt: chat.messages.find(m => m.role === 'system')?.content});
+            setEditingChat(chat);
         }
     }, [chat]);
+
+    useEffect(() => {
+        setEditing(null);
+    }, [chatId]);
 
     const sendMessageMutation = useSendMessage(chatId!);
     const editChatMutation = useEditChat(true, false);
@@ -165,9 +173,16 @@ export default function Chat() {
   
     return (
       <div className={styles.chatContainer}>
-        <div className={styles.messagesContainer}>
-            {messages.length > 0 && messages.map(renderMessage)}
-            {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
+        <div>
+            <div className={styles.header}>
+                <h1>{chat.title}</h1>
+                <h2>{models?.find(m => chat.default_model === m.api_name)?.human_name}</h2>
+                <button className={styles.editButton} onClick={() => setEditingChat(chat)}>Edit</button>
+            </div>
+            <div className={styles.messagesContainer}>
+                {messages.length > 0 && messages.map(renderMessage)}
+                {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
+            </div>
         </div>
         {renderInput()}
       </div>

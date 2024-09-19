@@ -32,6 +32,7 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
                 </div>
                 {chat.system_prompt && <div className={styles.formItem}>
                     <label htmlFor="systemPrompt">System Prompt</label>
+                    {chat.messages && chat.messages.length > 1 && <p className={styles.notice}>Note: Changing the system prompt will not affect existing messages</p>}
                     <textarea id="systemPrompt" value={chat.system_prompt ?? ''} onChange={(e) => updateChat({...chat, system_prompt: e.target.value })} />
                 </div>}
                 <div className={styles.formItem}>
