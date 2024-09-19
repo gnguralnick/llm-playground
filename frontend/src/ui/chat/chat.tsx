@@ -132,6 +132,16 @@ export default function Chat() {
         );
     };
 
+    const renderLoadingMessage = () => {
+        return (
+            <div className={cx(styles.messageContainer, styles.assistant)}>
+                <div className={styles.messageLoading}>
+                    <div className={styles.spinner} />
+                </div>
+            </div>
+        );
+    }
+
     const renderInput = () => {
         return <div className={styles.inputContainer}>
           <input
@@ -173,16 +183,15 @@ export default function Chat() {
   
     return (
       <div className={styles.chatContainer}>
-        <div>
-            <div className={styles.header}>
-                <h1>{chat.title}</h1>
-                <h2>{models?.find(m => chat.default_model === m.api_name)?.human_name}</h2>
-                <button className={styles.editButton} onClick={() => setEditingChat(chat)}>Edit</button>
-            </div>
-            <div className={styles.messagesContainer}>
-                {messages.length > 0 && messages.map(renderMessage)}
-                {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
-            </div>
+        <div className={styles.header}>
+            <h1>{chat.title}</h1>
+            <h2>{models?.find(m => chat.default_model === m.api_name)?.human_name}</h2>
+            <button className={styles.editButton} onClick={() => setEditingChat(chat)}>Edit</button>
+        </div>
+        <div className={styles.messagesContainer}>
+            {messages.length > 0 && messages.map(renderMessage)}
+            {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
+            {sendMessageMutation.isLoading && !sendMessageMutation.variables && renderLoadingMessage()}
         </div>
         {renderInput()}
       </div>
