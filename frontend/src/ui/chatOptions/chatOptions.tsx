@@ -35,11 +35,15 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
                     <textarea id="systemPrompt" value={chat.system_prompt ?? ''} onChange={(e) => updateChat({...chat, system_prompt: e.target.value })} />
                 </div>}
                 <div className={styles.formItem}>
-                    <label htmlFor="defaultModel">Default Model</label>
+                    <label htmlFor="model">Model</label>
                     <Select
-                        id="defaultModel"
+                        id="model"
                         options={modelOptions}
+                        className={styles.select}
                         isDisabled={modelsLoading}
+                        classNames={{
+                            option: (state) => state.isSelected ? (styles.selected + ' ' + styles.option) : styles.option
+                        }}
                         value={modelValue}
                         onChange={(selected) => updateChat({...chat, default_model: selected?.value ?? ''})}
                     />

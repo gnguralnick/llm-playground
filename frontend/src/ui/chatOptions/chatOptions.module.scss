@@ -41,5 +41,16 @@
             background-color: #4e4e4e;
             min-height: 5rem;
         }
+
+        .select {
+            .option {
+
+                color: black;
+
+                &.selected {
+                    color: white;
+                }
+            }
+        }
     }
 }
