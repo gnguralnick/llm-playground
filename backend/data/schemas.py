@@ -1,5 +1,6 @@
 from pydantic import BaseModel, UUID4
 from enum import Enum
+import datetime
 
 class Role(str, Enum):
     USER = 'user'
@@ -22,6 +23,7 @@ class Message(MessageBase):
     user_id: UUID4
     chat_id: UUID4
     chat: 'Chat'
+    created_at: datetime.datetime
     
     class Config:
         orm_mode = True
@@ -45,6 +47,7 @@ class Chat(ChatBase):
     id: UUID4
     user_id: UUID4
     messages: list[MessageView] = []
+    created_at: datetime.datetime
     
     class Config:
         orm_mode = True

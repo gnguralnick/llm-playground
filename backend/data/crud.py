@@ -23,7 +23,7 @@ def get_chat(db: Session, chat_id: int):
     return db.query(models.Chat).filter(models.Chat.id == chat_id).first()
 
 def get_chats(db: Session, user_id: int, skip: int = 0, limit: int = 100):
-    return db.query(models.Chat).filter(models.Chat.user_id == user_id).offset(skip).limit(limit).all()
+    return db.query(models.Chat).filter(models.Chat.user_id == user_id).order_by(models.Chat.created_at.desc()).offset(skip).limit(limit).all()
 
 def get_message(db: Session, message_id: int):
     return db.query(models.Message).filter(models.Message.id == message_id).first()

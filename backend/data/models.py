@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Enum
+from sqlalchemy import Column, ForeignKey, String, Enum, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -13,7 +13,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     
-    chats = relationship('Chat', back_populates='user')
+    chats = relationship('Chat', back_populates='user', cascade='all, delete-orphan')
     
 class Chat(Base):
     __tablename__ = 'chat'
@@ -22,9 +22,10 @@ class Chat(Base):
     title = Column(String, nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey('user.id'), nullable=False)
     default_model = Column(String, nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default='now()')
     
     user = relationship('User', back_populates='chats')
-    messages = relationship('Message', back_populates='chat')
+    messages = relationship('Message', back_populates='chat', order_by='Message.created_at', cascade='all, delete-orphan')
 
 class Message(Base):
     __tablename__ = 'message'
@@ -35,6 +36,7 @@ class Message(Base):
     model = Column(String, nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey('user.id'), nullable=False)
     chat_id = Column(UUID(as_uuid=True), ForeignKey('chat.id'), nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default='now()')
     
     user = relationship('User')
     chat = relationship('Chat', back_populates='messages')

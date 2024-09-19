@@ -4,12 +4,13 @@ from openai import OpenAI
 
 class OpenAIModel(ChatModel, ABC):
     
+    client: type[OpenAI] = OpenAI()
+    
     def __init__(self) -> None:
         super().__init__()
         
     def chat(self, messages: list[Message]) -> AssistantMessage:
-        client = OpenAI()
-        completion = client.chat.completions.create(
+        completion = self.client.chat.completions.create(
             model=self.api_name,
             messages=[{'role': m.role, 'content': m.content} for m in messages]
         )
