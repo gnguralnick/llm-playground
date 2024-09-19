@@ -42,7 +42,7 @@ export default function Sidebar({userId}: SidebarProps) {
 
     const editChatMutation = useEditChat();
 
-    const deleteChatMutation = useDeleteChat();
+    const deleteChatMutation = useDeleteChat(navigate, activeChat);
 
     const onEditSubmit = useCallback(() => {
         if (!editing) { return; }

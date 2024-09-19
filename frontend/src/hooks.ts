@@ -102,7 +102,7 @@ export function useEditChat(invalidateUserQuery?: boolean, invalidateChatQuery?:
     });
 }
 
-export function useDeleteChat() {
+export function useDeleteChat(navigate?: (url: string) => void, currentChatId?: string) {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (chat: Chat) => {
@@ -112,8 +112,11 @@ export function useDeleteChat() {
             const json: unknown = await response.json();
             return json;
         },
-        onSuccess: () => {
+        onSuccess: (_data, chat) => {
             void queryClient.invalidateQueries(); // TODO: this should be invalidateQueries(userId)
+            if (navigate && currentChatId === chat.id) {
+                navigate('/');
+            }
         }
     });
 }
