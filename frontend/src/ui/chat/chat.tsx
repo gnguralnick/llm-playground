@@ -9,7 +9,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { useEditChat, useGetChat, useSendMessage } from '../../hooks';
+import { useEditChat, useGetChat, useGetModels, useSendMessage } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
 import { Chat as ChatType } from '../../types';
 
@@ -45,7 +45,8 @@ export default function Chat() {
     
     const { chatId } = useParams();
 
-    const {isLoading, isError, error, data: chat } = useGetChat(chatId!);
+    const {isLoading: chatIsLoading, isError: chatIsError, error: chatError, data: chat } = useGetChat(chatId!);
+    const {isLoading: modelsAreLoading, data: models} = useGetModels();
 
     useEffect(() => {
         if (chat?.messages?.length === 0 || (chat?.messages?.length === 1 && chat?.messages[0]?.role === 'system')) {
@@ -139,12 +140,12 @@ export default function Chat() {
         </div>;
     }
 
-    if (isLoading || !chat) {
+    if (chatIsLoading || !chat) {
         return <ChatLoading />
     }
 
-    if (isError) {
-        return <div>{(error as Error)?.message || (error as { statusText: string })?.statusText}</div>;
+    if (chatIsError) {
+        return <div>{(chatError as Error)?.message || (chatError as { statusText: string })?.statusText}</div>;
     }
 
     const messages = chat.messages ?? [];
@@ -154,6 +155,8 @@ export default function Chat() {
             <ChatOptions 
                 chat={editing} 
                 updateChat={setEditing}
+                modelsLoading={modelsAreLoading}
+                models={models}
                 />
             {renderInput()}
         </div>;

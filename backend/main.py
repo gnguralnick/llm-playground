@@ -87,19 +87,23 @@ def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.S
     chat = data.crud.get_chat(db, chat_id)
     if chat is None:
         raise HTTPException(status_code=404, detail='Chat not found')
-    model = get_chat_model('gpt-4o-mini') # TODO: get model from chat
+    if message.model is not None:
+        model = get_chat_model(message.model)
+    else:
+        model = get_chat_model(chat.default_model)
+    message.model = None # user messages should not have a model; this was just for the model selection
     response_msg = model.chat(chat.messages + [message])
     data.crud.create_message(db=db, message=message, user_id="c0aba09b-f57e-4998-bee6-86da8b796c5b", chat_id=chat_id)
     return data.crud.create_message(db=db, message=response_msg, user_id=assistant_user.id, chat_id=chat_id)
 
-@app.put('/chat/{chat_id}/', response_model=data.schemas.MessageView)
-def update_message(chat_id: UUID4, message_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db)):
-    db_message = data.crud.get_message(db, message_id)
-    if db_message is None:
-        raise HTTPException(status_code=404, detail='Message not found')
-    if db_message.chat_id != chat_id:
-        raise HTTPException(status_code=400, detail='Message does not belong to chat')
-    return data.crud.update_message(db=db, message=message, message_id=message_id)
+# @app.put('/chat/{chat_id}/', response_model=data.schemas.MessageView)
+# def update_message(chat_id: UUID4, message_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db)):
+#     db_message = data.crud.get_message(db, message_id)
+#     if db_message is None:
+#         raise HTTPException(status_code=404, detail='Message not found')
+#     if db_message.chat_id != chat_id:
+#         raise HTTPException(status_code=400, detail='Message does not belong to chat')
+#     return data.crud.update_message(db=db, message=message, message_id=message_id)
 
 @app.get('/models/', response_model=list[ModelInfo])
 def read_models():

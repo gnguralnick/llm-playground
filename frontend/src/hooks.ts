@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { Message, Chat } from './types';
+import { Message, Chat, Model } from './types';
 
 async function backendFetch(url: string, options?: RequestInit) {
     const response = await fetch(import.meta.env.VITE_BACKEND_URL + url, options);
@@ -114,6 +114,18 @@ export function useDeleteChat() {
         },
         onSuccess: () => {
             void queryClient.invalidateQueries(); // TODO: this should be invalidateQueries(userId)
+        }
+    });
+}
+
+export function useGetModels() {
+    return useQuery({
+        queryKey: 'models',
+        queryFn: async () => {
+            const response = await backendFetch(`/models/`);
+            const json: unknown = await response?.json();
+            const models: Model[] = json as Model[];
+            return models;
         }
     });
 }

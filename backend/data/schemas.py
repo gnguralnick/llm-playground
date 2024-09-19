@@ -34,7 +34,7 @@ class MessageView(MessageBase):
         
 class ChatBase(BaseModel):
     title: str
-    default_model: str
+    default_model: str = 'gpt-4o-mini'
     
 class ChatCreate(ChatBase):
     system_prompt: str = """You are a helpful assistant. Format responses using Markdown. 

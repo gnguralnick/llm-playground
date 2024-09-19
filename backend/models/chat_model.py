@@ -16,6 +16,7 @@ class HumanMessage(Message):
     
 class AssistantMessage(Message):
     role: Role = Role.ASSISTANT
+    model: str
     
 class SystemMessage(Message):
     role: Role = Role.SYSTEM
@@ -25,8 +26,8 @@ class ChatModel(ABC, BaseModel):
     api_name: str
     human_name: str
     
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
 
     @abstractmethod
     def chat(self, messages: list[Message]) -> AssistantMessage:
@@ -36,5 +37,5 @@ class ModelInfo(BaseModel):
     human_name: str
     api_name: str
     
-class ModelInfoFull(BaseModel):
-    model: ChatModel
+class ModelInfoFull(ModelInfo):
+    model: type[ChatModel]
