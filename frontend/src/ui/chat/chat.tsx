@@ -168,6 +168,7 @@ export default function Chat() {
 
     const messages = chat.messages ?? [];
 
+    console.log(messages);
     if (editing) {
         return <div className={styles.chatContainer}>
             <ChatOptions 
