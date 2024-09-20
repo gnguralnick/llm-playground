@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './chat.module.scss';
 import clsx from 'clsx';
 import { ArrowUp } from '../assets/icons';
@@ -43,6 +43,11 @@ export default function Chat() {
     const [input, setInput] = useState('');
     const [showSystem, setShowSystem] = useState(false);
     const [editing, setEditing] = useState<ChatType | null>(null);
+    const scrollToMessage = useCallback((node: HTMLDivElement) => {
+        if (node !== null) {
+            node.scrollIntoView({behavior: 'smooth'});
+        }
+    }, []);
     
     const { chatId } = useParams();
 
@@ -90,7 +95,7 @@ export default function Chat() {
         }
     };
 
-    const renderMessage = (message: {role: string, content: string}, index: number) => {
+    const renderMessage = (message: {role: string, content: string}, index: number, scroll?: boolean) => {
         if (message.role === 'system') {
             return <div key={index} className={cx(styles.messageContainer, styles.system)}>
                 <button onClick={() => setShowSystem(!showSystem)} className={styles.systemButton}>
@@ -104,7 +109,7 @@ export default function Chat() {
             <div key={index} className={cx(styles.messageContainer, {
                     [styles.user]: message.role === 'user',
                     [styles.assistant]: message.role === 'assistant'
-            })}>
+            })} ref={scroll ? scrollToMessage : undefined}>
                 {message.role === 'assistant' && <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>}
                 <div className={cx(styles.message)}>
                     {message.role === 'assistant' ? <Markdown
@@ -193,11 +198,11 @@ export default function Chat() {
             <button className={styles.editButton} onClick={() => setEditingChat(chat)}>Edit</button>
         </div>
         <div className={styles.messagesContainer}>
-            {messages.length > 0 && messages.map(renderMessage)}
+            {messages.length > 0 && messages.map((msg, index) => renderMessage(msg, index, index === messages.length - 1))}
             {/* {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
             {sendMessageMutation.isLoading && !sendMessageMutation.variables && renderLoadingMessage()} */}
             {messageStreamLoading && sentMessage && renderMessage(sentMessage, messages.length)}
-            {messageStreamLoading && messageResponse && renderMessage(messageResponse, messages.length + 1)}
+            {messageStreamLoading && messageResponse && renderMessage(messageResponse, messages.length + 1, true)}
         </div>
         {renderInput()}
       </div>
