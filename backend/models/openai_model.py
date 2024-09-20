@@ -1,10 +1,11 @@
+from collections.abc import Generator
 from .chat_model import ChatModel, Message, AssistantMessage, ModelInfoFull
 from abc import ABC
 from openai import OpenAI
 
 class OpenAIModel(ChatModel, ABC):
     
-    client: type[OpenAI] = OpenAI()
+    client: OpenAI = OpenAI()
     
     def __init__(self) -> None:
         super().__init__()
@@ -12,10 +13,25 @@ class OpenAIModel(ChatModel, ABC):
     def chat(self, messages: list[Message]) -> AssistantMessage:
         completion = self.client.chat.completions.create(
             model=self.api_name,
-            messages=[{'role': m.role, 'content': m.content} for m in messages]
+            messages=[{'role': m.role, 'content': m.content} for m in messages] # type: ignore
         )
         
+        if completion.choices[0].message.content is None:
+            raise ValueError('No completion content')
+        
         return AssistantMessage(content=completion.choices[0].message.content, model=self.api_name)
+    
+    def chat_stream(self, messages: list[Message]) -> Generator[str, None, None]:
+        stream = self.client.chat.completions.create(
+            model=self.api_name,
+            messages=[{'role': m.role, 'content': m.content} for m in messages], # type: ignore
+            stream=True
+        )
+        
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                yield chunk.choices[0].delta.content
+                
     
 class GPT4OMini(OpenAIModel):
     
@@ -33,15 +49,4 @@ class GPT4O(OpenAIModel):
     def __init__(self) -> None:
         super().__init__()
         
-models: dict[str, ModelInfoFull] = {
-    'gpt-4o-mini': ModelInfoFull(
-        model=GPT4OMini,
-        human_name='GPT-4o Mini',
-        api_name='gpt-4o-mini',
-    ),
-    'gpt-4o': ModelInfoFull(
-        model=GPT4O,
-        human_name='GPT-4o',
-        api_name='gpt-4o',
-    ),
-}
+model_types = [GPT4OMini, GPT4O]

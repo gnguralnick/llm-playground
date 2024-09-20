@@ -9,9 +9,10 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { useEditChat, useGetChat, useGetModels, useSendMessage } from '../../hooks';
+import { useEditChat, useGetChat, useGetModels, useSendMessageStream } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
 import { Chat as ChatType } from '../../types';
+import { useQueryClient } from 'react-query';
 
 const cx = clsx.bind(styles);
 
@@ -45,6 +46,7 @@ export default function Chat() {
     
     const { chatId } = useParams();
 
+    const queryClient = useQueryClient();
     const {isLoading: chatIsLoading, isError: chatIsError, error: chatError, data: chat } = useGetChat(chatId!);
     const {isLoading: modelsAreLoading, data: models} = useGetModels();
 
@@ -62,7 +64,7 @@ export default function Chat() {
         setEditing(null);
     }, [chatId]);
 
-    const sendMessageMutation = useSendMessage(chatId!);
+    const {sendMessage: sendMessageStream, response: messageResponse, loading: messageStreamLoading, sentMessage} = useSendMessageStream(chatId!);
     const editChatMutation = useEditChat(true, false);
 
     const handleSend = async () => {
@@ -73,10 +75,12 @@ export default function Chat() {
             }
             const msg = input.trim();
             setInput('');
-            await sendMessageMutation.mutateAsync({
-                role: 'user',
-                content: msg
-            });
+            // await sendMessageMutation.mutateAsync({
+            //     role: 'user',
+            //     content: msg
+            // });
+            await sendMessageStream({role: 'user', content: msg});
+            void queryClient.invalidateQueries(chatId);
         }
     };
 
@@ -132,15 +136,15 @@ export default function Chat() {
         );
     };
 
-    const renderLoadingMessage = () => {
-        return (
-            <div className={cx(styles.messageContainer, styles.assistant)}>
-                <div className={styles.messageLoading}>
-                    <div className={styles.spinner} />
-                </div>
-            </div>
-        );
-    }
+    // const renderLoadingMessage = () => {
+    //     return (
+    //         <div className={cx(styles.messageContainer, styles.assistant)}>
+    //             <div className={styles.messageLoading}>
+    //                 <div className={styles.spinner} />
+    //             </div>
+    //         </div>
+    //     );
+    // }
 
     const renderInput = () => {
         return <div className={styles.inputContainer}>
@@ -168,7 +172,6 @@ export default function Chat() {
 
     const messages = chat.messages ?? [];
 
-    console.log(messages);
     if (editing) {
         return <div className={styles.chatContainer}>
             <ChatOptions 
@@ -191,8 +194,10 @@ export default function Chat() {
         </div>
         <div className={styles.messagesContainer}>
             {messages.length > 0 && messages.map(renderMessage)}
-            {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
-            {sendMessageMutation.isLoading && !sendMessageMutation.variables && renderLoadingMessage()}
+            {/* {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
+            {sendMessageMutation.isLoading && !sendMessageMutation.variables && renderLoadingMessage()} */}
+            {messageStreamLoading && sentMessage && renderMessage(sentMessage, messages.length)}
+            {messageStreamLoading && messageResponse && renderMessage(messageResponse, messages.length + 1)}
         </div>
         {renderInput()}
       </div>

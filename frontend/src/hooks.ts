@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { Message, Chat, Model } from './types';
+import { Message, Chat, Model, MessageView } from './types';
+import { useState } from 'react';
 
 async function backendFetch(url: string, options?: RequestInit) {
     const response = await fetch(import.meta.env.VITE_BACKEND_URL + url, options);
@@ -37,7 +38,7 @@ export function useGetChats(userId: string) {
 export function useSendMessage(chatId: string) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (msg: Pick<Message, "content" | "role"> & Partial<Message>) => {
+        mutationFn: async (msg: MessageView) => {
             const response = await backendFetch(`/chat/${chatId}/`, {
                 method: 'POST',
                 headers: {
@@ -52,6 +53,46 @@ export function useSendMessage(chatId: string) {
             void queryClient.invalidateQueries(chatId);
         }
     });
+}
+
+export function useSendMessageStream(chatId: string) {
+    const [done, setDone] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [response, setResponse] = useState<MessageView | null>(null);
+    const [sentMessage, setSentMessage] = useState<MessageView | null>(null);
+
+    const sendMessage = async (msg: MessageView) => {
+        setLoading(true);
+        setSentMessage(msg);
+        setResponse({role: 'assistant', content: ''});
+        const response = await backendFetch(`/chat/${chatId}/stream`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(msg)
+        });
+        const reader = response.body?.getReader();
+        if (!reader) {
+            setLoading(false);
+            setDone(true);
+            return;
+        }
+        const decoder = new TextDecoder();
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                break;
+            }
+            
+            const result = decoder.decode(value);
+            setResponse(r => ({role: 'assistant', content: (r?.content ?? '') + result}));
+        }
+        setLoading(false);
+        setDone(true);
+    };
+
+    return {sendMessage, response, loading, done, sentMessage};
 }
 
 export function useCreateChat(navigate?: (url: string) => void) {

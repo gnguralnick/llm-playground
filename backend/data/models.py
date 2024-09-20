@@ -1,10 +1,11 @@
 from sqlalchemy import Column, ForeignKey, String, Enum, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
-import uuid
 
 from data.database import Base
 from data.schemas import Role
+
+import uuid
 
 class User(Base):
     __tablename__ = 'user'
