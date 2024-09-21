@@ -1,15 +1,16 @@
 import styles from './App.module.scss';
 import { Outlet } from 'react-router-dom';
-import Sidebar from './ui/sidebar/sidebar';
+import UserProvider from './context/userContextProvider';
 
 function App() {
   
   return (
-    <div className={styles.app}>
-      <Sidebar userId='c0aba09b-f57e-4998-bee6-86da8b796c5b'/>
-      <Outlet />
-    </div>
+    <UserProvider>
+      <div className={styles.app}>
+        <Outlet />
+      </div>
+    </UserProvider>
   )
 }
 
-export default App
+export default App;

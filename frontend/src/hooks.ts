@@ -1,9 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { Message, Chat, Model, MessageView } from './types';
-import { useState } from 'react';
+import { Message, Chat, Model, MessageView, User } from './types';
+import { useContext, useState } from 'react';
+import UserContext, { UserContextType } from './context/userContext';
 
-async function backendFetch(url: string, options?: RequestInit) {
-    const response = await fetch(import.meta.env.VITE_BACKEND_URL + url, options);
+export async function backendFetch(url: string, options?: RequestInit, token?: string): Promise<Response> {
+    const response = await fetch(import.meta.env.VITE_BACKEND_URL + url, {
+        ...options,
+        headers: {
+            ...(options?.headers ?? {}),
+            'Authorization': token ? `Bearer ${token}` : ''
+        }
+    });
     if (!response.ok) {
         throw new Error(response.statusText);
     }
@@ -11,11 +18,37 @@ async function backendFetch(url: string, options?: RequestInit) {
     return response;
 }
 
+export function useUser(): UserContextType {
+    const context = useContext(UserContext);
+    if (!context) {
+        throw new Error('useUser must be used within a UserProvider');
+    }
+    return context;
+}
+
+export function useGetUser(token?: string) {
+    return useQuery({
+        queryKey: ['user', {token}],
+        queryFn: async ({queryKey}) => {
+            const [, {token}] = queryKey as [string, {token?: string}];
+            if (!token) {
+                return null;
+            }
+            const response = await backendFetch('/users/me', undefined, token);
+            const json: unknown = await response?.json();
+            const user: User = json as User;
+            return user;
+        },
+        enabled: false,
+    });
+}
+
 export function useGetChat(chatId: string) {
+    const { token } = useUser();
     return useQuery({
         queryKey: chatId,
         queryFn: async () => {
-            const response = await backendFetch(`/chat/${chatId}`);
+            const response = await backendFetch(`/chat/${chatId}`, undefined, token!);
             const json: unknown = await response?.json();
             const chat: Chat = json as Chat;
             return chat;
@@ -24,10 +57,11 @@ export function useGetChat(chatId: string) {
 }
 
 export function useGetChats(userId: string) {
+    const { token } = useUser();
     return useQuery({
         queryKey: userId,
         queryFn: async () => {
-            const response = await backendFetch(`/chat/`);
+            const response = await backendFetch(`/chat/`, undefined, token!);
             const json: unknown = await response?.json();
             const chats: Chat[] = json as Chat[];
             return chats;
@@ -37,6 +71,7 @@ export function useGetChats(userId: string) {
 
 export function useSendMessage(chatId: string) {
     const queryClient = useQueryClient();
+    const { token } = useUser();
     return useMutation({
         mutationFn: async (msg: MessageView) => {
             const response = await backendFetch(`/chat/${chatId}/`, {
@@ -45,7 +80,7 @@ export function useSendMessage(chatId: string) {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(msg)
-            });
+            }, token!);
             const json: unknown = await response.json();
             return json as Message;
         },
@@ -60,6 +95,7 @@ export function useSendMessageStream(chatId: string) {
     const [loading, setLoading] = useState(false);
     const [response, setResponse] = useState<MessageView | null>(null);
     const [sentMessage, setSentMessage] = useState<MessageView | null>(null);
+    const { token } = useUser();
 
     const sendMessage = async (msg: MessageView) => {
         setLoading(true);
@@ -71,7 +107,7 @@ export function useSendMessageStream(chatId: string) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(msg)
-        });
+        }, token!);
         const reader = response.body?.getReader();
         if (!reader) {
             setLoading(false);
@@ -97,6 +133,7 @@ export function useSendMessageStream(chatId: string) {
 
 export function useCreateChat(navigate?: (url: string) => void) {
     const queryClient = useQueryClient();
+    const { token } = useUser();
     return useMutation({
         mutationFn: async () => {
             const response = await backendFetch(`/chat/`, {
@@ -105,7 +142,7 @@ export function useCreateChat(navigate?: (url: string) => void) {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ title: 'New Chat'})
-            });
+            }, token!);
             const json: unknown = await response.json();
             return json as Chat;
         },
@@ -120,6 +157,7 @@ export function useCreateChat(navigate?: (url: string) => void) {
 
 export function useEditChat(invalidateUserQuery?: boolean, invalidateChatQuery?: boolean) {
     const queryClient = useQueryClient();
+    const { token } = useUser();
     return useMutation({
         mutationFn: async (chat: Chat) => {
             const response = await backendFetch(`/chat/${chat.id}`, {
@@ -128,7 +166,7 @@ export function useEditChat(invalidateUserQuery?: boolean, invalidateChatQuery?:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(chat)
-            });
+            }, token!);
             const json: unknown = await response.json();
             return json as Chat;
         },
@@ -145,16 +183,17 @@ export function useEditChat(invalidateUserQuery?: boolean, invalidateChatQuery?:
 
 export function useDeleteChat(navigate?: (url: string) => void, currentChatId?: string) {
     const queryClient = useQueryClient();
+    const { token, user } = useUser();
     return useMutation({
         mutationFn: async (chat: Chat) => {
             const response = await backendFetch(`/chat/${chat.id}`, {
                 method: 'DELETE'
-            });
+            }, token!);
             const json: unknown = await response.json();
             return json;
         },
         onSuccess: (_data, chat) => {
-            void queryClient.invalidateQueries(); // TODO: this should be invalidateQueries(userId)
+            void queryClient.invalidateQueries(user!.id);
             if (navigate && currentChatId === chat.id) {
                 navigate('/');
             }
@@ -163,13 +202,15 @@ export function useDeleteChat(navigate?: (url: string) => void, currentChatId?: 
 }
 
 export function useGetModels() {
+    const { token } = useUser();
     return useQuery({
         queryKey: 'models',
         queryFn: async () => {
-            const response = await backendFetch(`/models/`);
+            const response = await backendFetch(`/models/`, undefined, token!);
             const json: unknown = await response?.json();
             const models: Model[] = json as Model[];
             return models;
         }
     });
 }
+

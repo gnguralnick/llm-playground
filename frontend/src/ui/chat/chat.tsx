@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import styles from './chat.module.scss';
 import clsx from 'clsx';
 import { ArrowUp } from '../assets/icons';
@@ -198,7 +198,7 @@ export default function Chat() {
             <button className={styles.editButton} onClick={() => setEditingChat(chat)}>Edit</button>
         </div>
         <div className={styles.messagesContainer}>
-            {messages.length > 0 && messages.map((msg, index) => renderMessage(msg, index, index === messages.length - 1))}
+            {messages.length > 0 && messages.map((msg, index) => renderMessage(msg, index))}
             {/* {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
             {sendMessageMutation.isLoading && !sendMessageMutation.variables && renderLoadingMessage()} */}
             {messageStreamLoading && sentMessage && renderMessage(sentMessage, messages.length)}

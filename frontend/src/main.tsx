@@ -11,7 +11,9 @@ import {
 
 import { QueryClient, QueryClientProvider } from 'react-query';
 
+import ChatPage from './pages/chat/chat.tsx';
 import Chat from './ui/chat/chat.tsx';
+import Login from './pages/login/login.tsx';
 
 const router = createBrowserRouter([
   {
@@ -20,8 +22,19 @@ const router = createBrowserRouter([
     errorElement: <Error />,
     children: [
       {
-        path: '/chat/:chatId',
-        element: <Chat />,
+        path: '/chat/',
+        element: <ChatPage />,
+        children: [
+          {
+            path: '/chat/:chatId',
+            element: <Chat />,
+            
+          },
+        ]
+      },
+      {
+        path: '/login',
+        element: <Login />,
       }
     ]
   }
@@ -29,10 +42,12 @@ const router = createBrowserRouter([
 
 const queryClient = new QueryClient();
 
+
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <RouterProvider router={router}/>
     </QueryClientProvider>
   </StrictMode>,
 );

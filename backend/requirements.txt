@@ -2,3 +2,7 @@ fastapi[standard]
 openai
 sqlalchemy
 psycopg2-binary
+pyjwt
+alembic
+passlib
+bcrypt
