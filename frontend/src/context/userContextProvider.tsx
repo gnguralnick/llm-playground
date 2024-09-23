@@ -36,7 +36,7 @@ export default function UserProvider({children}: {children: React.ReactNode}) {
     useEffect(() => {
         if (token && !user && !isLoading) {
             // if we have a token but no user, get the user
-            void getUser().then(() => navigate('/chat'));
+            void getUser();
         }
     }, [token, getUser, isLoading, user, navigate]);
 

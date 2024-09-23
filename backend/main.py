@@ -18,8 +18,8 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 
 
-system_user: data.models.User | None = None
-assistant_user: data.models.User | None = None
+system_user: data.models.User | None = None # global user for system messages
+assistant_user: data.models.User | None = None # global user for assistant messages
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -64,7 +64,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=config.access_token_expire_minutes)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=10)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, config.secret_key, algorithm=config.algorithm)
     return encoded_jwt
@@ -172,21 +172,8 @@ def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.S
     response_msg = model.chat(cast(list, chat.messages) + [message])
     data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     return data.crud.create_message(db=db, message=cast(data.schemas.MessageCreate, response_msg), user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
-
-# async def data_stream(chat_id: UUID4):
-#     if assistant_user is None:
-#         raise HTTPException(status_code=500, detail='Assistant user not found')
-    
-#     if chat_id not in stream_state.message_queues:
-#         raise HTTPException(status_code=400, detail='Chat is not streaming a response')
-#     queue = stream_state.message_queues[chat_id]
-#     while True:
-#         token = await queue.get()
-#         if token is None:
-#             break
-#         yield token
         
-def handle_stream(chat_id: UUID4, db: data.Session, model: str, stream: Generator[str, None, None], loading_msg_id: uuid.UUID):
+def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Generator[str, None, None]):
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
 
@@ -201,7 +188,7 @@ def handle_stream(chat_id: UUID4, db: data.Session, model: str, stream: Generato
         message += token
         yield token
     
-    data.crud.update_message(db=db, message_id=loading_msg_id, message=data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content=message, model=model))
+    data.crud.update_message(db=db, message_id=msg_id, message=data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content=message, model=model))
 
 @app.post('/chat/{chat_id}/stream/', response_model=dict)
 async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreate, background_tasks: BackgroundTasks, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
@@ -228,18 +215,10 @@ async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreat
     
     stream = model.chat_stream(cast(list, chat.messages) + [message])
     
-    # background_tasks.add_task(handle_stream_completion, chat_id, db, model_info.api_name)
-    
-    return StreamingResponse(handle_stream(chat_id, db, model_info.api_name, stream, cast(UUID4, loading_msg_db.id)))
-
-# @app.get('/chat/{chat_id}/stream/', response_class=StreamingResponse)
-# def stream_messages(chat_id: UUID4):
-#     if chat_id not in app.state.message_queues:
-#         raise HTTPException(status_code=400, detail='Chat is not streaming a response')
-#     return StreamingResponse(data_stream(chat_id))
+    return StreamingResponse(handle_stream(cast(UUID4, loading_msg_db.id), db, model_info.api_name, stream))
 
 @app.get('/models/', response_model=list[ModelInfo])
-def read_models(current_user: data.schemas.User = Depends(get_current_user)):
+def read_models(_: data.schemas.User = Depends(get_current_user)):
     return get_models()
 
 @app.get('/')
