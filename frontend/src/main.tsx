@@ -32,12 +32,12 @@ const router = createBrowserRouter([
           },
         ]
       },
-      {
-        path: '/login',
-        element: <Login />,
-      }
     ]
-  }
+  },
+  {
+    path: '/login',
+    element: <Login />,
+  },
 ]);
 
 const queryClient = new QueryClient();

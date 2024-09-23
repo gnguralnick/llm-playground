@@ -12,7 +12,7 @@ function Chat() {
 
     return (
     <div className={styles.chatPage}>
-        <Sidebar userId={user?.id} />
+        <Sidebar />
         <Outlet />
     </div>
     )

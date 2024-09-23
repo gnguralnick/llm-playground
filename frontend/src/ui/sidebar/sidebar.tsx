@@ -5,14 +5,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faPencil, faX } from '@fortawesome/free-solid-svg-icons';
 import { Chat } from '../../types';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useCreateChat, useDeleteChat, useEditChat, useGetChats } from '../../hooks';
+import { useCreateChat, useDeleteChat, useEditChat, useGetChats, useUser } from '../../hooks';
 
 
 const cx = clsx.bind(styles);
-
-interface SidebarProps {
-    userId: string;
-};
 
 function SidebarLoading() {
     return (
@@ -28,13 +24,17 @@ function SidebarLoading() {
     );
 }
 
-export default function Sidebar({userId}: SidebarProps) {
+export default function Sidebar() {
 
     const { chatId: activeChat } = useParams();
     const navigate = useNavigate();
 
     const [editing, setEditing] = useState<Chat | null>(null);
     const editInputRef = useRef<HTMLInputElement>(null);
+
+    const {user, logout} = useUser();
+
+    const userId = user?.id;
 
     const { isLoading, isError, error, data: chats } = useGetChats(userId);
 
@@ -117,6 +117,7 @@ export default function Sidebar({userId}: SidebarProps) {
                     </NavLink>;
                 })}
             </ul>
+            <button className={styles.logoutButton} onClick={logout}>Logout</button>
         </div>
     );
 }

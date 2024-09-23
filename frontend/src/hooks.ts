@@ -48,7 +48,7 @@ export function useGetChat(chatId: string) {
     return useQuery({
         queryKey: chatId,
         queryFn: async () => {
-            const response = await backendFetch(`/chat/${chatId}`, undefined, token!);
+            const response = await backendFetch(`/chat/${chatId}`, undefined, token);
             const json: unknown = await response?.json();
             const chat: Chat = json as Chat;
             return chat;
@@ -61,7 +61,7 @@ export function useGetChats(userId: string) {
     return useQuery({
         queryKey: userId,
         queryFn: async () => {
-            const response = await backendFetch(`/chat/`, undefined, token!);
+            const response = await backendFetch(`/chat/`, undefined, token);
             const json: unknown = await response?.json();
             const chats: Chat[] = json as Chat[];
             return chats;
@@ -80,7 +80,7 @@ export function useSendMessage(chatId: string) {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(msg)
-            }, token!);
+            }, token);
             const json: unknown = await response.json();
             return json as Message;
         },
@@ -107,7 +107,7 @@ export function useSendMessageStream(chatId: string) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(msg)
-        }, token!);
+        }, token);
         const reader = response.body?.getReader();
         if (!reader) {
             setLoading(false);
@@ -142,7 +142,7 @@ export function useCreateChat(navigate?: (url: string) => void) {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ title: 'New Chat'})
-            }, token!);
+            }, token);
             const json: unknown = await response.json();
             return json as Chat;
         },
@@ -166,7 +166,7 @@ export function useEditChat(invalidateUserQuery?: boolean, invalidateChatQuery?:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(chat)
-            }, token!);
+            }, token);
             const json: unknown = await response.json();
             return json as Chat;
         },
@@ -188,12 +188,12 @@ export function useDeleteChat(navigate?: (url: string) => void, currentChatId?: 
         mutationFn: async (chat: Chat) => {
             const response = await backendFetch(`/chat/${chat.id}`, {
                 method: 'DELETE'
-            }, token!);
+            }, token);
             const json: unknown = await response.json();
             return json;
         },
         onSuccess: (_data, chat) => {
-            void queryClient.invalidateQueries(user!.id);
+            void queryClient.invalidateQueries(user.id);
             if (navigate && currentChatId === chat.id) {
                 navigate('/');
             }
@@ -206,7 +206,7 @@ export function useGetModels() {
     return useQuery({
         queryKey: 'models',
         queryFn: async () => {
-            const response = await backendFetch(`/models/`, undefined, token!);
+            const response = await backendFetch(`/models/`, undefined, token);
             const json: unknown = await response?.json();
             const models: Model[] = json as Model[];
             return models;
