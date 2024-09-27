@@ -117,7 +117,11 @@ export default function Sidebar() {
                     </NavLink>;
                 })}
             </ul>
-            <button className={styles.logoutButton} onClick={logout}>Logout</button>
+            <div className={styles.buttons}>
+                <button className={styles.logoutButton} onClick={() => navigate('/user')}>Edit User</button>
+                <button className={styles.logoutButton} onClick={logout}>Logout</button>
+            </div>
+            
         </div>
     );
 }

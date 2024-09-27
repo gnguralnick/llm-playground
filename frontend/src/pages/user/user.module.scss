@@ -1,0 +1,73 @@
+.userPage {
+    height: 100%;
+    width: 100%;
+    min-height: inherit;
+    display: flex;
+    flex-direction: row;
+}
+
+
+.content {
+    padding: 2rem;
+    width: 100%;
+
+    .form {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .formSubmit {
+        transition: background-color 0.3s ease;
+        border: none;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+
+        &:hover {
+            background-color: #797979;
+        }
+    }
+
+    .formItem {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 100%;
+        margin-bottom: 1rem;
+
+        .notice {
+            margin: 0;
+            color: darkgrey;
+        }
+
+        .error {
+            color: red;
+        }
+
+        input {
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 0.25rem;
+            font-size: 1rem;
+            background-color: #4e4e4e;
+        }
+
+        &.apiKeyItem {
+            display: flex;
+            flex-direction: row;
+            gap: 1rem;
+
+            align-items: center;
+
+            ::placeholder {
+                color: white;
+                font-size: 3rem;
+                padding-bottom: .5rem;
+            }
+
+            input {
+                flex: 1;
+            }
+        }
+    }
+}

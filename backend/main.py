@@ -114,6 +114,23 @@ async def login_for_access_token(
 def read_users_me(current_user: data.schemas.User = Depends(get_current_user)):
     return current_user
 
+@app.get('/users/me/api_key/', response_model=list[data.schemas.ModelAPIKeyBase])
+def read_api_keys(db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
+    return data.crud.get_user_api_providers(db=db, user_id=current_user.id)
+
+@app.post('/users/me/api_key/', response_model=data.schemas.ModelAPIKeyBase)
+def create_api_key(api_key: data.schemas.ModelAPIKeyCreate, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
+    return data.crud.create_api_key(db=db, api_key=api_key, user_id=current_user.id)
+
+@app.delete('/users/me/api_key/{provider}')
+def delete_api_key(provider: data.schemas.ModelAPI, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
+    data.crud.delete_api_key(db=db, user_id=current_user.id, provider=provider)
+    return {'message': 'API key deleted', }
+
+@app.put('/users/me/api_key/{provider}', response_model=data.schemas.ModelAPIKeyBase)
+def update_api_key(api_key: data.schemas.ModelAPIKeyCreate, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
+    return data.crud.update_api_key(db=db, user_id=current_user.id, api_key=api_key)
+
 @app.get('/chat/', response_model=list[data.schemas.ChatView])
 def read_chats(skip: int = 0, limit: int = 100, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
     return data.crud.get_chats(db, user_id=current_user.id, skip=skip, limit=limit)

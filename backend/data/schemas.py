@@ -2,8 +2,6 @@ from pydantic import BaseModel, UUID4
 import datetime
 from util import Role, ModelAPI
 
-
-
 class MessageBase(BaseModel):
     role: Role
     content: str
@@ -56,6 +54,20 @@ class ChatView(ChatBase):
     class Config:
         orm_mode = True
         
+class ModelAPIKeyBase(BaseModel):
+    provider: ModelAPI
+    
+class ModelAPIKeyCreate(ModelAPIKeyBase):
+    key: str
+
+class ModelAPIKey(ModelAPIKeyBase):
+    id: UUID4
+    user_id: UUID4
+    key: str
+    
+    class Config:
+        orm_mode = True
+        
 class UserBase(BaseModel):
     email: str
     
@@ -65,21 +77,9 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: UUID4
     chats: list[Chat] = []
+    api_keys: list[ModelAPIKeyBase] = []
     
     class Config:
         orm_mode = True
         
         
-class ModelAPIKeyBase(BaseModel):
-    key: str
-    provider: ModelAPI
-    
-class ModelAPIKeyCreate(ModelAPIKeyBase):
-    pass
-
-class ModelAPIKey(ModelAPIKeyBase):
-    id: UUID4
-    user_id: UUID4
-    
-    class Config:
-        orm_mode = True

@@ -71,8 +71,13 @@ def update_message(db: Session, message_id: UUID4, message: schemas.MessageCreat
     return db_message
 
 def create_api_key(db: Session, api_key: schemas.ModelAPIKeyCreate, user_id: UUID4):
-    db_api_key = models.APIKey(**api_key.model_dump(), user_id=user_id)
-    db.add(db_api_key)
+    existing_provider_key = db.query(models.APIKey).filter(models.APIKey.user_id == user_id and models.APIKey.provider == api_key.provider).first()
+    if existing_provider_key is not None:
+        existing_provider_key.key = api_key.key
+        db_api_key = existing_provider_key
+    else:
+        db_api_key = models.APIKey(**api_key.model_dump(), user_id=user_id)
+        db.add(db_api_key)
     db.commit()
     db.refresh(db_api_key)
     return db_api_key
@@ -96,3 +101,6 @@ def delete_api_key(db: Session, user_id: UUID4, provider: schemas.ModelAPI):
     db.delete(db_api_key)
     db.commit()
     return db_api_key
+
+def get_user_api_providers(db: Session, user_id: UUID4) -> list[schemas.ModelAPI]:
+    return db.query(models.APIKey.provider).filter(models.APIKey.user_id == user_id).all()

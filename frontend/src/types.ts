@@ -16,10 +16,17 @@ export interface Chat {
     default_model: string;
 }
 
+export const MODEL_API_PROVIDERS = ['openai'] as const;
+
+export interface ModelAPIKey {
+    provider: 'openai';
+}
+
 export interface User {
     id: string;
     email: string;
     chats?: Chat[];
+    api_keys: ModelAPIKey[];
 }
 
 export interface Model {

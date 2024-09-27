@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { Message, Chat, Model, MessageView, User } from './types';
+import { Message, Chat, Model, MessageView, User, ModelAPIKey } from './types';
 import { useContext, useState } from 'react';
 import UserContext, { UserContextType } from './context/userContext';
 
@@ -214,3 +214,54 @@ export function useGetModels() {
     });
 }
 
+export function useGetAPIKeys() {
+    const { token, user } = useUser();
+    return useQuery({
+        queryKey: user.id + '/api_key',
+        queryFn: async () => {
+            const response = await backendFetch('/users/me/api_key/', undefined, token);
+            const json: unknown = await response.json();
+            const keys: ModelAPIKey[] = json as ModelAPIKey[];
+            return keys;
+        }
+    })
+}
+
+export function useAddAPIKey() {
+    const { token, user } = useUser();
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({provider, key}: {provider: string, key: string}) => {
+            const response = await backendFetch('/users/me/api_key/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({provider, key})
+            }, token);
+
+            const json: unknown = await response.json();
+            return json as ModelAPIKey;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries(user.id + '/api_key');
+        }
+    })
+}
+
+export function useDeleteAPIKey() {
+    const { token, user } = useUser();
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (provider: string) => {
+            const response = await backendFetch(`/users/me/api_key/${provider}/`, {
+                method: 'DELETE'
+            }, token);
+            const json: unknown = await response.json();
+            return json;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries(user.id + '/api_key');
+        }
+    });
+}

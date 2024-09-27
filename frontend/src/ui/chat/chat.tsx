@@ -141,16 +141,6 @@ export default function Chat() {
         );
     };
 
-    // const renderLoadingMessage = () => {
-    //     return (
-    //         <div className={cx(styles.messageContainer, styles.assistant)}>
-    //             <div className={styles.messageLoading}>
-    //                 <div className={styles.spinner} />
-    //             </div>
-    //         </div>
-    //     );
-    // }
-
     const renderInput = () => {
         return <div className={styles.inputContainer}>
           <input
