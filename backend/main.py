@@ -11,7 +11,7 @@ from typing import cast
 
 from datetime import datetime, timedelta, timezone
 
-from models import get_chat_model_info, get_models, ModelInfo
+from models import get_chat_model, get_models, ModelInfo, ChatModel
 
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
@@ -144,31 +144,30 @@ def update_chat(chat: data.schemas.ChatCreate, db_chat: data.models.Chat = Depen
     return data.crud.update_chat(db=db, chat_id=cast(UUID4, db_chat.id), chat=chat)
 
 @app.delete('/chat/{chat_id}')
-def delete_chat(chat_id: UUID4, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
-    db_chat = data.crud.get_chat(db, chat_id)
-    if db_chat is None:
-        raise HTTPException(status_code=404, detail='Chat not found')
-    if db_chat.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail='Not authorized to delete chat')
+def delete_chat(db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user), db_chat: data.models.Chat = Depends(get_chat)):
     db.delete(db_chat)
     db.commit()
     return {'message': 'Chat deleted', }
 
+async def get_model(message: data.schemas.MessageCreate, chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
+    if message.model is not None:
+        model_type = get_chat_model(message.model)
+    else:
+        model_type = get_chat_model(cast(str, chat.default_model))
+    key = None
+    if model_type.requires_key:
+        db_key = data.crud.get_api_key(db, current_user.id, model_type.api_provider)
+        if db_key is None:
+            raise HTTPException(status_code=400, detail='No API key registered for model for this user')
+        key = db_key.key
+    model = model_type(api_key=cast(str, key))
+    message.model = None # user messages should not have a model; this was just for the model selection
+    return model
+
 @app.post('/chat/{chat_id}/', response_model=data.schemas.MessageView)
-def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
-    chat = data.crud.get_chat(db, chat_id)
-    if chat is None:
-        raise HTTPException(status_code=404, detail='Chat not found')
-    if chat.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail='Not authorized to send message to chat')
+def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db), chat: data.models.Chat = Depends(get_chat), model: ChatModel = Depends(get_model)):
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
-    if message.model is not None:
-        model_info = get_chat_model_info(message.model)
-    else:
-        model_info = get_chat_model_info(cast(str, chat.default_model))
-    model = model_info.model()
-    message.model = None # user messages should not have a model; this was just for the model selection
     response_msg = model.chat(cast(list, chat.messages) + [message])
     data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     return data.crud.create_message(db=db, message=cast(data.schemas.MessageCreate, response_msg), user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
@@ -191,31 +190,21 @@ def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Gener
     data.crud.update_message(db=db, message_id=msg_id, message=data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content=message, model=model))
 
 @app.post('/chat/{chat_id}/stream/', response_model=dict)
-async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreate, background_tasks: BackgroundTasks, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
-    chat = data.crud.get_chat(db, chat_id)
-    if chat is None:
-        raise HTTPException(status_code=404, detail='Chat not found')
-    if chat.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail='Not authorized to send message to chat')
+async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreate, background_tasks: BackgroundTasks, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user), chat: data.models.Chat = Depends(get_chat), model: ChatModel = Depends(get_model)):
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
-    if message.model is not None:
-        model_info = get_chat_model_info(message.model)
-    else:
-        model_info = get_chat_model_info(cast(str, chat.default_model))
-    model = model_info.model()
-    message.model = None
-    if not model_info.supports_streaming:
+
+    if not model.supports_streaming:
         raise HTTPException(status_code=400, detail='Model does not support streaming')
     
     data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     
-    loading_msg = data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content='LOADING', model=model_info.api_name)
+    loading_msg = data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content='LOADING', model=model.api_name)
     loading_msg_db = data.crud.create_message(db=db, message=loading_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
     
     stream = model.chat_stream(cast(list, chat.messages) + [message])
     
-    return StreamingResponse(handle_stream(cast(UUID4, loading_msg_db.id), db, model_info.api_name, stream))
+    return StreamingResponse(handle_stream(cast(UUID4, loading_msg_db.id), db, model.api_name, stream))
 
 @app.get('/models/', response_model=list[ModelInfo])
 def read_models(_: data.schemas.User = Depends(get_current_user)):

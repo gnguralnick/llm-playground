@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from data.database import Base
-from data.schemas import Role
+from util import Role, ModelAPI
 
 import uuid
 
@@ -15,6 +15,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     
     chats = relationship('Chat', back_populates='user', cascade='all, delete-orphan')
+    api_keys = relationship('APIKey', back_populates='user', cascade='all, delete-orphan')
     
 class Chat(Base):
     __tablename__ = 'chat'
@@ -41,3 +42,13 @@ class Message(Base):
     
     user = relationship('User')
     chat = relationship('Chat', back_populates='messages')
+    
+class APIKey(Base):
+    __tablename__ = 'api_key'
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    key = Column(String, nullable=False, unique=True)
+    provider = Column(Enum(ModelAPI), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('user.id'), nullable=False)
+    
+    user = relationship('User', back_populates='api_keys')

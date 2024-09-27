@@ -69,3 +69,30 @@ def update_message(db: Session, message_id: UUID4, message: schemas.MessageCreat
     db.commit()
     db.refresh(db_message)
     return db_message
+
+def create_api_key(db: Session, api_key: schemas.ModelAPIKeyCreate, user_id: UUID4):
+    db_api_key = models.APIKey(**api_key.model_dump(), user_id=user_id)
+    db.add(db_api_key)
+    db.commit()
+    db.refresh(db_api_key)
+    return db_api_key
+
+def get_api_key(db: Session, user_id: UUID4, provider: schemas.ModelAPI) -> models.APIKey | None:
+    return db.query(models.APIKey).filter(models.APIKey.user_id == user_id and models.APIKey.provider == provider).first()
+
+def update_api_key(db: Session, user_id: UUID4, api_key: schemas.ModelAPIKeyCreate):
+    db_api_key = db.query(models.APIKey).filter(models.APIKey.user_id == user_id and models.APIKey.provider == api_key.provider).first()
+    if db_api_key is None:
+        raise ValueError('API key not found')
+    db_api_key.key = api_key.key
+    db.commit()
+    db.refresh(db_api_key)
+    return db_api_key
+
+def delete_api_key(db: Session, user_id: UUID4, provider: schemas.ModelAPI):
+    db_api_key = db.query(models.APIKey).filter(models.APIKey.user_id == user_id and models.APIKey.provider == provider).first()
+    if db_api_key is None:
+        raise ValueError('API key not found')
+    db.delete(db_api_key)
+    db.commit()
+    return db_api_key

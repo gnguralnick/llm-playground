@@ -1,11 +1,8 @@
 from pydantic import BaseModel, UUID4
-from enum import Enum
 import datetime
+from util import Role, ModelAPI
 
-class Role(str, Enum):
-    USER = 'user'
-    ASSISTANT = 'assistant'
-    SYSTEM = 'system'
+
 
 class MessageBase(BaseModel):
     role: Role
@@ -68,6 +65,21 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: UUID4
     chats: list[Chat] = []
+    
+    class Config:
+        orm_mode = True
+        
+        
+class ModelAPIKeyBase(BaseModel):
+    key: str
+    provider: ModelAPI
+    
+class ModelAPIKeyCreate(ModelAPIKeyBase):
+    pass
+
+class ModelAPIKey(ModelAPIKeyBase):
+    id: UUID4
+    user_id: UUID4
     
     class Config:
         orm_mode = True

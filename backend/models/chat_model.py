@@ -1,12 +1,7 @@
 from abc import ABC, abstractmethod
-from enum import Enum
 from pydantic import BaseModel
 from collections.abc import Generator
-
-class Role(str, Enum):
-    USER = 'user'
-    ASSISTANT = 'assistant'
-    SYSTEM = 'system'
+from util import Role, ModelAPI
     
 class Message(BaseModel):
     role: Role
@@ -21,20 +16,30 @@ class AssistantMessage(Message):
     
 class SystemMessage(Message):
     role: Role = Role.SYSTEM
+    
+class ModelInfo(BaseModel):
+    human_name: str
+    api_name: str
+    api_provider: ModelAPI
+    requires_key: bool = False
+    supports_streaming: bool = False
 
 class ChatModel(ABC):
     """An abstract class for chat models. It defines the basic methods that all chat models should implement.
 
     Args:
-        api_name (str): The name of the model as it appears in its API (for models accessed via an API) - e.g. 'gpt-4o-mini'.
-        human_name (str): The human-readable name of the model - e.g. 'GPT-4o Mini' - for display in the UI.
+        api_key (str | None, optional): The API key to use with the model. Defaults to None. Only required if the model requires an API key.
     """
     
-    api_name: str
     human_name: str
+    api_name: str
+    api_provider: ModelAPI
+    requires_key: bool = False
+    supports_streaming: bool = False
     
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, api_key: str | None = None, **kwargs) -> None:
         super().__init__(**kwargs)
+        self._api_key = api_key
 
     @abstractmethod
     def chat(self, messages: list[Message]) -> AssistantMessage:
@@ -60,29 +65,12 @@ class ChatModel(ABC):
         """
         pass
     
-class ModelInfo(BaseModel):
-    human_name: str
-    api_name: str
-    supports_streaming: bool = False
-    
-class ModelInfoFull(ModelInfo):
-    model: type[ChatModel]
-    
-def generate_model_info(model_type: type[ChatModel]) -> ModelInfoFull:
-    """Generate a model information object from a model type.
-    The point of this is to generate a Pydantic model object that can be used to serialize the model information to JSON.
-    Specialized functionality that the model supports, such as streaming, will be automatically verified and included in the model information object.
+    @classmethod
+    def generate_model_info(cls) -> ModelInfo:
+        """Generate and return information about the model.
 
-    Args:
-        model_type (type[ChatModel]): The type of the model for which to generate the model information object.
-
-    Returns:
-        ModelInfoFull: The model information object.
-    """
-    model = model_type()
-    return ModelInfoFull(
-        human_name=model.human_name,
-        api_name=model.api_name,
-        model=model_type,
-        supports_streaming=(model.chat_stream != ChatModel.chat_stream)
-    )
+        Returns:
+            ModelInfoFull: Information about the model.
+        """
+        attrs = {x: getattr(cls, x) for x in dir(cls) if not (x.startswith('__') or callable(getattr(cls, x)))}
+        return ModelInfo(**attrs)
