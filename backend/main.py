@@ -186,8 +186,12 @@ def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.S
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
     response_msg = model.chat(cast(list, chat.messages) + [message])
-    data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
-    return data.crud.create_message(db=db, message=cast(data.schemas.MessageCreate, response_msg), user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
+    db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
+    try:
+        return data.crud.create_message(db=db, message=cast(data.schemas.MessageCreate, response_msg), user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
+    except Exception as e:
+        data.crud.delete_message(db=db, message_id=cast(UUID4, db_msg.id))
+        raise HTTPException(status_code=400, detail=str(e))
         
 def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Generator[str, None, None]):
     if assistant_user is None:
@@ -214,14 +218,19 @@ async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreat
     if not model.supports_streaming:
         raise HTTPException(status_code=400, detail='Model does not support streaming')
     
-    data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
+    db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     
     loading_msg = data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content='LOADING', model=model.api_name)
     loading_msg_db = data.crud.create_message(db=db, message=loading_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
     
-    stream = model.chat_stream(cast(list, chat.messages) + [message])
-    
-    return StreamingResponse(handle_stream(cast(UUID4, loading_msg_db.id), db, model.api_name, stream))
+    try:
+        stream = model.chat_stream(cast(list, chat.messages) + [message])
+        
+        return StreamingResponse(handle_stream(cast(UUID4, loading_msg_db.id), db, model.api_name, stream))
+    except Exception as e:
+        data.crud.delete_message(db=db, message_id=cast(UUID4, loading_msg_db.id))
+        data.crud.delete_message(db=db, message_id=cast(UUID4, db_msg.id))
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get('/models/', response_model=list[ModelInfo])
 def read_models(_: data.schemas.User = Depends(get_current_user)):

@@ -151,7 +151,7 @@ export default function Chat() {
             className={styles.input}
             placeholder="Type a message..."
           />
-          <button onClick={() => handleSend} className={styles.button}>
+          <button onClick={() => void handleSend()} className={styles.button}>
             <ArrowUp />
           </button>
         </div>;

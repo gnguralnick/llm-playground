@@ -70,6 +70,14 @@ def update_message(db: Session, message_id: UUID4, message: schemas.MessageCreat
     db.refresh(db_message)
     return db_message
 
+def delete_message(db: Session, message_id: UUID4):
+    db_message = db.query(models.Message).filter(models.Message.id == message_id).first()
+    if db_message is None:
+        raise ValueError('Message not found')
+    db.delete(db_message)
+    db.commit()
+    return db_message
+
 def create_api_key(db: Session, api_key: schemas.ModelAPIKeyCreate, user_id: UUID4):
     existing_provider_key = db.query(models.APIKey).filter(models.APIKey.user_id == user_id and models.APIKey.provider == api_key.provider).first()
     if existing_provider_key is not None:
