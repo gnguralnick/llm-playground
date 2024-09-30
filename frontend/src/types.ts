@@ -16,10 +16,10 @@ export interface Chat {
     default_model: string;
 }
 
-export const MODEL_API_PROVIDERS = ['openai'] as const;
+export const MODEL_API_PROVIDERS = ['openai', 'anthropic'] as const;
 
 export interface ModelAPIKey {
-    provider: 'openai';
+    provider: typeof MODEL_API_PROVIDERS[number];
 }
 
 export interface User {
@@ -32,4 +32,5 @@ export interface User {
 export interface Model {
     human_name: string;
     api_name: string;
+    supports_streaming: boolean;
 }

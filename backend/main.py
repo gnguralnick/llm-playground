@@ -11,7 +11,7 @@ from typing import cast
 
 from datetime import datetime, timedelta, timezone
 
-from models import get_chat_model, get_models, ModelInfo, ChatModel
+from models import get_chat_model, get_models, ModelInfo, ChatModel, get_chat_model_info
 
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
@@ -235,6 +235,11 @@ async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreat
 @app.get('/models/', response_model=list[ModelInfo])
 def read_models(_: data.schemas.User = Depends(get_current_user)):
     return get_models()
+
+@app.get('/models/{model_name}', response_model=ModelInfo)
+def read_model(model_name: str, _: data.schemas.User = Depends(get_current_user)):
+    model_info = get_chat_model_info(model_name)
+    return model_info
 
 @app.get('/')
 async def root():

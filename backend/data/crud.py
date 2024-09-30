@@ -45,7 +45,7 @@ def update_chat(db: Session, chat_id: UUID4, chat: schemas.ChatCreate):
         raise ValueError('Chat not found')
     db_chat.title = chat.title
     db_chat.default_model = chat.default_model
-    db_system_msg = db.query(models.Message).filter(models.Message.chat_id == chat_id and models.Message.role == schemas.Role.SYSTEM).first()
+    db_system_msg = db.query(models.Message).filter(models.Message.chat_id == chat_id, models.Message.role == schemas.Role.SYSTEM).first()
     if db_system_msg is not None:
         db_system_msg.content = chat.system_prompt
     db.commit()
@@ -79,7 +79,7 @@ def delete_message(db: Session, message_id: UUID4):
     return db_message
 
 def create_api_key(db: Session, api_key: schemas.ModelAPIKeyCreate, user_id: UUID4):
-    existing_provider_key = db.query(models.APIKey).filter(models.APIKey.user_id == user_id and models.APIKey.provider == api_key.provider).first()
+    existing_provider_key = db.query(models.APIKey).filter(models.APIKey.user_id == user_id, models.APIKey.provider == api_key.provider).first()
     if existing_provider_key is not None:
         existing_provider_key.key = api_key.key
         db_api_key = existing_provider_key
@@ -91,10 +91,10 @@ def create_api_key(db: Session, api_key: schemas.ModelAPIKeyCreate, user_id: UUI
     return db_api_key
 
 def get_api_key(db: Session, user_id: UUID4, provider: schemas.ModelAPI) -> models.APIKey | None:
-    return db.query(models.APIKey).filter(models.APIKey.user_id == user_id and models.APIKey.provider == provider).first()
+    return db.query(models.APIKey).filter(models.APIKey.user_id == user_id, models.APIKey.provider == provider).first()
 
 def update_api_key(db: Session, user_id: UUID4, api_key: schemas.ModelAPIKeyCreate):
-    db_api_key = db.query(models.APIKey).filter(models.APIKey.user_id == user_id and models.APIKey.provider == api_key.provider).first()
+    db_api_key = db.query(models.APIKey).filter(models.APIKey.user_id == user_id, models.APIKey.provider == api_key.provider).first()
     if db_api_key is None:
         raise ValueError('API key not found')
     db_api_key.key = api_key.key
@@ -103,7 +103,7 @@ def update_api_key(db: Session, user_id: UUID4, api_key: schemas.ModelAPIKeyCrea
     return db_api_key
 
 def delete_api_key(db: Session, user_id: UUID4, provider: schemas.ModelAPI):
-    db_api_key = db.query(models.APIKey).filter(models.APIKey.user_id == user_id and models.APIKey.provider == provider).first()
+    db_api_key = db.query(models.APIKey).filter(models.APIKey.user_id == user_id, models.APIKey.provider == provider).first()
     if db_api_key is None:
         raise ValueError('API key not found')
     db.delete(db_api_key)

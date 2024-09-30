@@ -9,7 +9,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { useEditChat, useGetChat, useGetModels, useSendMessageStream } from '../../hooks';
+import { useEditChat, useGetChat, useGetModels, useSendMessage, useSendMessageStream } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
 import { Chat as ChatType } from '../../types';
 import { useQueryClient } from 'react-query';
@@ -70,12 +70,16 @@ export default function Chat() {
     }, [chatId]);
 
     const {sendMessage: sendMessageStream, response: messageResponse, loading: messageStreamLoading, sentMessage} = useSendMessageStream(chatId!);
+    const sendMessageMutation = useSendMessage(chatId!);
     const editChatMutation = useEditChat(true, false);
 
     const handleSend = async () => {
+        if (!chat || !models) return;
+
         if (input.trim() !== '') {
+            let editedChat = chat;
             if (editing) {
-                await editChatMutation.mutateAsync(editing);
+                editedChat = await editChatMutation.mutateAsync(editing);
                 setEditing(null);
             }
             const msg = input.trim();
@@ -84,7 +88,17 @@ export default function Chat() {
             //     role: 'user',
             //     content: msg
             // });
-            await sendMessageStream({role: 'user', content: msg});
+            const model = models.find(m => m.api_name === editedChat.default_model);
+            if (!model) {
+                console.error('Model not found');
+                return;
+            }
+            console.log(model);
+            if (model.supports_streaming) {
+                await sendMessageStream({role: 'user', content: msg});
+            } else {
+                sendMessageMutation.mutate({role: 'user', content: msg});
+            }
             void queryClient.invalidateQueries(chatId);
         }
     };
@@ -141,6 +155,15 @@ export default function Chat() {
         );
     };
 
+    const renderLoadingMessage = () => {
+        return <div className={cx(styles.messageContainer, styles.assistant)} ref={scrollToMessage}>
+            <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>
+            <div className={cx(styles.message, styles.loading)}>
+                Loading...
+            </div>
+        </div>;
+    }
+
     const renderInput = () => {
         return <div className={styles.inputContainer}>
           <textarea
@@ -188,8 +211,8 @@ export default function Chat() {
         </div>
         <div className={styles.messagesContainer}>
             {messages.length > 0 && messages.map((msg, index) => renderMessage(msg, index))}
-            {/* {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
-            {sendMessageMutation.isLoading && !sendMessageMutation.variables && renderLoadingMessage()} */}
+            {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
+            {sendMessageMutation.isLoading && renderLoadingMessage()}
             {messageStreamLoading && sentMessage && renderMessage(sentMessage, messages.length)}
             {messageStreamLoading && messageResponse && renderMessage(messageResponse, messages.length + 1, true)}
         </div>

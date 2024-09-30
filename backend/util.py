@@ -7,3 +7,4 @@ class Role(str, Enum):
     
 class ModelAPI(str, Enum):
     OPENAI = 'openai'
+    ANTHROPIC = 'anthropic'

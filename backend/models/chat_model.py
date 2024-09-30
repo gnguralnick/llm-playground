@@ -53,7 +53,6 @@ class ChatModel(ABC):
         """
         pass
     
-    @abstractmethod
     def chat_stream(self, messages: list[Message]) -> Generator[str, None]:
         """Send a list of messages to the model and stream the response.
 
@@ -63,7 +62,7 @@ class ChatModel(ABC):
         Yields:
             Generator[str, None]: A generator that yields the response from the model in chunks. The size of the chunks is implementation-dependent.
         """
-        pass
+        raise NotImplementedError
     
     @classmethod
     def generate_model_info(cls) -> ModelInfo:

@@ -1,7 +1,8 @@
 from . import openai_model as openai
+from . import anthropic_model as anthropic
 from .chat_model import ChatModel, ModelInfo, ModelInfo
 
-model_types: list[type[ChatModel]] = openai.model_types
+model_types: list[type[ChatModel]] = openai.model_types + anthropic.model_types
 
 def get_models() -> list[ModelInfo]:
     return [model.generate_model_info() for model in model_types]
