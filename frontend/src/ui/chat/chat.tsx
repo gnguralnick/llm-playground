@@ -45,7 +45,7 @@ export default function Chat() {
     const [editing, setEditing] = useState<ChatType | null>(null);
     const scrollToMessage = useCallback((node: HTMLDivElement) => {
         if (node !== null) {
-            node.scrollIntoView({behavior: 'smooth'});
+            node.scrollIntoView({behavior: 'smooth', block: 'end', inline: 'nearest'});
         }
     }, []);
     
@@ -89,8 +89,8 @@ export default function Chat() {
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
             void handleSend();
         }
     };
@@ -112,8 +112,9 @@ export default function Chat() {
             })} ref={scroll ? scrollToMessage : undefined}>
                 {message.role === 'assistant' && <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>}
                 <div className={cx(styles.message)}>
-                    {message.role === 'assistant' ? <Markdown
-                        children={message.content}
+                    <button className={styles.copyButton} onClick={() => void navigator.clipboard.writeText(message.content)}>Copy</button>
+                    <Markdown
+                        children={message.content.replace('\\\\(', '$').replace('\\\\)', '$').replace('\\\\[', '$$').replace('\\\\]', '$$')}
                         remarkPlugins={[remarkGfm, remarkMath]}
                         rehypePlugins={[rehypeKatex]}
                         className={styles.markdown}
@@ -135,7 +136,6 @@ export default function Chat() {
                             )
                         }
                         }}/>
-                    : message.content}
                 </div>
             </div>
         );
@@ -143,8 +143,7 @@ export default function Chat() {
 
     const renderInput = () => {
         return <div className={styles.inputContainer}>
-          <input
-            type="text"
+          <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

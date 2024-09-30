@@ -62,6 +62,16 @@
         }
     }
 
+    .copyButton {
+        background: none;
+        border: none;
+
+        &:hover {
+            cursor: pointer;
+            background-color: #323334;
+        }
+    }
+
     &.user {
         .message, .messageLoading {
             align-self: flex-end;
