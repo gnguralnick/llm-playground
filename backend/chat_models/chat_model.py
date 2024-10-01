@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
 from collections.abc import Generator
-from util import Role, ModelAPI
+from util import Role, ModelAPI, ModelConfig
     
 class Message(BaseModel):
     role: Role
@@ -16,13 +16,6 @@ class AssistantMessage(Message):
     
 class SystemMessage(Message):
     role: Role = Role.SYSTEM
-    
-class ModelInfo(BaseModel):
-    human_name: str
-    api_name: str
-    api_provider: ModelAPI
-    requires_key: bool = False
-    supports_streaming: bool = False
 
 class ChatModel(ABC):
     """An abstract class for chat models. It defines the basic methods that all chat models should implement.
@@ -36,10 +29,15 @@ class ChatModel(ABC):
     api_provider: ModelAPI
     requires_key: bool = False
     supports_streaming: bool = False
+    config: ModelConfig
     
-    def __init__(self, api_key: str | None = None, **kwargs) -> None:
+    def __init__(self, api_key: str | None = None, config: ModelConfig | dict | None = None, **kwargs) -> None:
         super().__init__(**kwargs)
         self._api_key = api_key
+        if config is not None:
+            if isinstance(config, dict):
+                config = self.config.__class__(**config)
+            self.config = config
 
     @abstractmethod
     def chat(self, messages: list[Message]) -> AssistantMessage:
@@ -65,11 +63,12 @@ class ChatModel(ABC):
         raise NotImplementedError
     
     @classmethod
-    def generate_model_info(cls) -> ModelInfo:
+    def generate_model_info(cls):
         """Generate and return information about the model.
 
         Returns:
             ModelInfoFull: Information about the model.
         """
+        from chat_models import ModelInfo
         attrs = {x: getattr(cls, x) for x in dir(cls) if not (x.startswith('__') or callable(getattr(cls, x)))}
         return ModelInfo(**attrs)

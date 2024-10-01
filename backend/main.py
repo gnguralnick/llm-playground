@@ -11,12 +11,12 @@ from typing import cast
 
 from datetime import datetime, timedelta, timezone
 
-from models import get_chat_model, get_models, ModelInfo, ChatModel, get_chat_model_info
+from chat_models import get_chat_model, get_models, ModelInfo, ChatModel, get_chat_model_info
+from util import ModelConfig
 
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from jwt.exceptions import InvalidTokenError
-
 
 system_user: data.models.User | None = None # global user for system messages
 assistant_user: data.models.User | None = None # global user for assistant messages
@@ -177,18 +177,23 @@ async def get_model(message: data.schemas.MessageCreate, chat: data.models.Chat 
         if db_key is None:
             raise HTTPException(status_code=400, detail='No API key registered for model for this user')
         key = db_key.key
-    model = model_type(api_key=cast(str, key))
+    if message.config is not None:
+        config = message.config
+    else:
+        config = cast(dict, chat.config)
+    model = model_type(api_key=cast(str, key), config=config)
     message.model = None # user messages should not have a model; this was just for the model selection
-    return model
+    return model, config
 
 @app.post('/chat/{chat_id}/', response_model=data.schemas.MessageView)
-def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db), chat: data.models.Chat = Depends(get_chat), model: ChatModel = Depends(get_model)):
+def send_message(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
+    model, config = model_with_config
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
     response_msg = model.chat(cast(list, chat.messages) + [message])
     db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     try:
-        return data.crud.create_message(db=db, message=cast(data.schemas.MessageCreate, response_msg), user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
+        return data.crud.create_message(db=db, message=data.schemas.MessageCreate(**response_msg.model_dump(), config=config), user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
     except Exception as e:
         data.crud.delete_message(db=db, message_id=cast(UUID4, db_msg.id))
         raise HTTPException(status_code=400, detail=str(e))
@@ -211,7 +216,8 @@ def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Gener
     data.crud.update_message(db=db, message_id=msg_id, message=data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content=message, model=model))
 
 @app.post('/chat/{chat_id}/stream/', response_model=dict)
-async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreate, background_tasks: BackgroundTasks, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user), chat: data.models.Chat = Depends(get_chat), model: ChatModel = Depends(get_model)):
+async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreate, background_tasks: BackgroundTasks, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
+    model, config = model_with_config
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
 
@@ -220,7 +226,7 @@ async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreat
     
     db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     
-    loading_msg = data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content='LOADING', model=model.api_name)
+    loading_msg = data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content='LOADING', model=model.api_name, config=config)
     loading_msg_db = data.crud.create_message(db=db, message=loading_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
     
     try:

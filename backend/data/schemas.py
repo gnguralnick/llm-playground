@@ -1,11 +1,15 @@
 from pydantic import BaseModel, UUID4
 import datetime
 from util import Role, ModelAPI
+from chat_models import model_config_type
+from chat_models.openai_model import OpenAIConfig
+
 
 class MessageBase(BaseModel):
     role: Role
     content: str
     model: str | None = None
+    config: model_config_type | None = None
     
     class Config:
         use_enum_values = True
@@ -32,6 +36,7 @@ class MessageView(MessageBase):
 class ChatBase(BaseModel):
     title: str
     default_model: str = 'gpt-4o-mini'
+    config: model_config_type | None = OpenAIConfig()
     
 class ChatCreate(ChatBase):
     system_prompt: str = """You are a helpful assistant. Format responses using Markdown. 

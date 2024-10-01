@@ -103,6 +103,8 @@ export default function Chat() {
         }
     };
 
+    console.log(models);
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             void handleSend();
