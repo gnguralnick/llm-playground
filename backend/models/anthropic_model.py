@@ -1,3 +1,4 @@
+from collections.abc import Generator
 import anthropic
 from .chat_model import ChatModel, Message, AssistantMessage
 from abc import ABC
@@ -7,7 +8,7 @@ class AnthropicModel(ChatModel, ABC):
     
     api_provider: ModelAPI = ModelAPI.ANTHROPIC
     requires_key: bool = True
-    supports_streaming: bool = False
+    supports_streaming: bool = True
     
     def __init__(self, api_key: str) -> None:
         super().__init__(api_key)
@@ -29,6 +30,17 @@ class AnthropicModel(ChatModel, ABC):
             raise ValueError(response.error.type + ': ' + response.error.message)
         
         return AssistantMessage(content=response.content[0].text, model=self.api_name)
+    
+    def chat_stream(self, messages: list[Message]) -> Generator[str, None, None]:
+        system_msg = [m for m in messages if m.role == Role.SYSTEM][0]
+        with self._client.messages.stream(
+            model=self.api_name,
+            messages=[{'role': m.role, 'content': m.content} for m in messages if m.role != Role.SYSTEM], # type: ignore
+            max_tokens=1000,
+            system=system_msg.content
+        ) as stream:
+            for text in stream.text_stream:
+                yield text
     
 class Claude3Point5Sonnet(AnthropicModel):
     
