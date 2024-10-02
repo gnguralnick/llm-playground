@@ -28,7 +28,6 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
             // check if chat's config matches the selected model in terms of keys (in case the model was changed)
             const model = models.find(m => m.api_name === chat.default_model);
             if (!model) return;
-            console.log(model.config, chat.config);
             for (const key of Object.keys(chat.config)) {
                 if (model.config[key] === undefined) {
                     updateChat((v: ChatType) => ({...v, config: model.config}));
