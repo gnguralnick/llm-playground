@@ -30,6 +30,7 @@ class ChatModel(ABC):
     requires_key: bool = False
     supports_streaming: bool = False
     config: ModelConfig
+    config_type: type[ModelConfig]
     
     def __init__(self, api_key: str | None = None, config: ModelConfig | dict | None = None, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -37,6 +38,8 @@ class ChatModel(ABC):
         if config is not None:
             if isinstance(config, dict):
                 config = self.config.__class__(**config)
+            if not isinstance(config, self.config_type):
+                raise ValueError('Invalid config type')
             self.config = config
 
     @abstractmethod

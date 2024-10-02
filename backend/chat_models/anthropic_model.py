@@ -14,8 +14,8 @@ class AnthropicConfig(ModelConfig):
         return {
             'max_tokens': self.max_tokens.val,
             'temperature': self.temperature.val,
-            'top_k': self.top_k,
-            'top_p': self.top_p
+            'top_k': self.top_k if self.top_k is not None else anthropic.NOT_GIVEN,
+            'top_p': self.top_p if self.top_p is not None else anthropic.NOT_GIVEN
         }
     
 
@@ -25,6 +25,7 @@ class AnthropicModel(ChatModel, ABC):
     requires_key: bool = True
     supports_streaming: bool = True
     config: AnthropicConfig = AnthropicConfig()
+    config_type = AnthropicConfig
     
     def __init__(self, api_key: str, config: AnthropicConfig | None) -> None:
         super().__init__(api_key, config)

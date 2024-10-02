@@ -30,6 +30,7 @@ class OpenAIModel(ChatModel, ABC):
     requires_key: bool = True
     supports_streaming: bool = True
     config: OpenAIConfig = OpenAIConfig()
+    config_type = OpenAIConfig
     
     def __init__(self, api_key: str, config: OpenAIConfig | None) -> None:
         super().__init__(api_key, config)

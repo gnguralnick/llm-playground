@@ -4,12 +4,13 @@ import styles from './chatOptions.module.scss';
 import { Chat as ChatType, Model, RangedNumber } from '../../types';
 
 import Select from 'react-select';
+import { useEffect } from 'react';
 
 //const cx = clsx.bind(styles);
 
 interface ChatOptionsProps {
     chat: ChatType;
-    updateChat: (chat: ChatType) => void;
+    updateChat: (chat: ChatType | ((v: ChatType) => ChatType)) => void;
     models?: Model[];
     modelsLoading: boolean;
 }
@@ -22,8 +23,25 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
         modelValue = {label: models.find(m => m.api_name === chat.default_model)?.human_name, value: chat.default_model};
     }
 
+    useEffect(() => {
+        if (models) {
+            // check if chat's config matches the selected model in terms of keys (in case the model was changed)
+            const model = models.find(m => m.api_name === chat.default_model);
+            if (!model) return;
+            console.log(model.config, chat.config);
+            for (const key of Object.keys(chat.config)) {
+                if (model.config[key] === undefined) {
+                    updateChat((v: ChatType) => ({...v, config: model.config}));
+                    break;
+                }
+            }
+        }
+    }, [models, chat.default_model, chat.config, updateChat]);
+
     const renderConfigItem = (key: string, index: number) => {
         const configItem = chat.config[key] as RangedNumber;
+
+        if (!configItem) return null;
         
         if (configItem.max === null || configItem.min === null) {
             return <div key={index} className={styles.formItem}>
