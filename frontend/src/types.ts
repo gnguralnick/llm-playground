@@ -22,7 +22,7 @@ export interface Chat {
     messages?: Message[];
     system_prompt?: string;
     default_model: string;
-    config: Record<string, unknown>;
+    config: Record<string, RangedNumber>;
 }
 
 export const MODEL_API_PROVIDERS = ['openai', 'anthropic'] as const;

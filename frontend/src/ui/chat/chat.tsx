@@ -11,8 +11,10 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useEditChat, useGetChat, useGetModels, useSendMessage, useSendMessageStream } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
-import { Chat as ChatType } from '../../types';
+import { Chat as ChatType, Message } from '../../types';
 import { useQueryClient } from 'react-query';
+import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const cx = clsx.bind(styles);
 
@@ -108,7 +110,7 @@ export default function Chat() {
         }
     };
 
-    const renderMessage = (message: {role: string, content: string}, index: number, scroll?: boolean) => {
+    const renderMessage = (message: Message, index: number, scroll?: boolean) => {
         if (message.role === 'system') {
             return <div key={index} className={cx(styles.messageContainer, styles.system)}>
                 <button onClick={() => setShowSystem(!showSystem)} className={styles.systemButton}>
@@ -123,33 +125,43 @@ export default function Chat() {
                     [styles.user]: message.role === 'user',
                     [styles.assistant]: message.role === 'assistant'
             })} ref={scroll ? scrollToMessage : undefined}>
-                {message.role === 'assistant' && <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>}
-                <div className={cx(styles.message)}>
-                    <button className={styles.copyButton} onClick={() => void navigator.clipboard.writeText(message.content)}>Copy</button>
-                    <Markdown
-                        children={message.content.replace('\\\\(', '$').replace('\\\\)', '$').replace('\\\\[', '$$').replace('\\\\]', '$$')}
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                        className={styles.markdown}
-                        components={{
-                        code(props) {
-                            const {children, className, ...rest} = props
-                            const match = /language-(\w+)/.exec(className ?? '')
-                            return match ? (
-                            <SyntaxHighlighter
-                                PreTag="div"
-                                children={String(children).replace(/\n$/, '')}
-                                language={match[1]}
-                                style={materialDark}
-                            />
-                            ) : (
-                            <code {...rest} className={className}>
-                                {children}
-                            </code>
-                            )
-                        }
-                        }}/>
+                
+                <div className={cx(styles.info)}>
+                        {message.role === 'assistant' && message.model && message.model !== chat?.default_model && <span className={styles.model}>Generated with {models?.find(m => m.api_name === message.model)?.human_name}</span>}
+                        <button className={styles.copyButton} onClick={() => void navigator.clipboard.writeText(message.content)}>
+                            <FontAwesomeIcon icon={faCopy} />
+                        </button>
                 </div>
+                <div className={cx(styles.content)}>
+                    {message.role === 'assistant' && <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>}
+                    <div className={cx(styles.message)}>
+                        <Markdown
+                            children={message.content.replace('\\\\(', '$').replace('\\\\)', '$').replace('\\\\[', '$$').replace('\\\\]', '$$')}
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                            className={styles.markdown}
+                            components={{
+                            code(props) {
+                                const {children, className, ...rest} = props
+                                const match = /language-(\w+)/.exec(className ?? '')
+                                return match ? (
+                                <SyntaxHighlighter
+                                    PreTag="div"
+                                    children={String(children).replace(/\n$/, '')}
+                                    language={match[1]}
+                                    style={materialDark}
+                                />
+                                ) : (
+                                <code {...rest} className={className}>
+                                    {children}
+                                </code>
+                                )
+                            }
+                            }}/>
+                    </div>
+                </div>
+                
+                
             </div>
         );
     };

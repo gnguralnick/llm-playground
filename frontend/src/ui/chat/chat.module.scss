@@ -35,6 +35,11 @@
         font-weight: 400;
     }
 
+    p {
+        margin: 0;
+        text-transform: capitalize;
+    }
+
     .editButton {
         margin-top: 1rem;
     }
@@ -49,13 +54,27 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px;
+    margin-top: 1rem;
+
+    .info {
+        width: 100%;
+        display: flex;
+        gap: 1rem;
+    }
+
+    .content {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+        flex-direction: column;
+    }
 
     .message {
         padding: 10px;
         border-radius: 10px;
         max-width: 70%;
+
+        
 
         .markdown > * {
             margin: 0;
@@ -73,6 +92,11 @@
     }
 
     &.user {
+
+        .info {
+            justify-content: flex-end;
+            margin-bottom: 0.5rem;
+        }
         .message, .messageLoading {
             align-self: flex-end;
             background-color: #ececec3a;
@@ -80,51 +104,27 @@
     }
 
     &.assistant {
-        flex-direction: row;
+
+        .content {
+            flex-direction: row;
+        }
     
 
         .message, .messageLoading {
             padding-left: 0;
-            padding-top: 0.8rem;
             align-self: flex-start;
             max-width: 100%;
-        }
-
-        .messageLoading {
-            padding-left: 0;
-            padding-top: 0.8rem;
-            align-self: flex-start;
-            max-width: 100%;
-
-            @keyframes spin {
-                0% {
-                    transform: rotate(0deg);
-                }
-                100% {
-                    transform: rotate(360deg);
-                }
-            }
-
-            .spinner {
-                width: 50px;
-                height: 50px;
-                border: 5px solid rgba(0, 0, 0, 0.1); /* Light background border */
-                border-top: 5px solid #3498db;         /* Blue spinner color */
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-              
-                /* Centering the spinner */
-                display: inline-block;
-                position: relative;
-              }
-            
-
         }
     }
 
     &.system {
         background-color: #1c1b1b3a;
         border-radius: 10px;
+        padding: 1rem;
+
+        button {
+            margin-bottom: 1rem;
+        }
     }
 }
 

@@ -40,7 +40,7 @@ export default function Sidebar() {
 
     const createChatMutation = useCreateChat(navigate);
 
-    const editChatMutation = useEditChat();
+    const editChatMutation = useEditChat(true);
 
     const deleteChatMutation = useDeleteChat(navigate, activeChat);
 

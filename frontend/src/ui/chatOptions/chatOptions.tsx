@@ -1,16 +1,13 @@
 import styles from './chatOptions.module.scss';
-//import clsx from 'clsx';
 
 import { Chat as ChatType, Model, RangedNumber } from '../../types';
 
 import Select from 'react-select';
 import { useEffect } from 'react';
 
-//const cx = clsx.bind(styles);
-
 interface ChatOptionsProps {
     chat: ChatType;
-    updateChat: (chat: ChatType | ((v: ChatType) => ChatType)) => void;
+    updateChat: React.Dispatch<React.SetStateAction<ChatType>>;
     models?: Model[];
     modelsLoading: boolean;
 }
