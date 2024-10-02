@@ -36,7 +36,7 @@ class MessageView(MessageBase):
 class ChatBase(BaseModel):
     title: str
     default_model: str = 'gpt-4o-mini'
-    config: model_config_type | None = OpenAIConfig()
+    config: model_config_type = OpenAIConfig()
     
 class ChatCreate(ChatBase):
     system_prompt: str = """You are a helpful assistant. Format responses using Markdown. 

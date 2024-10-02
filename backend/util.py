@@ -11,6 +11,7 @@ class ModelAPI(str, Enum):
     ANTHROPIC = 'anthropic'
     
 class RangedFloat(BaseModel):
+    type: str = 'float'
     min: float | None
     max: float | None
     val: float
@@ -23,6 +24,7 @@ class RangedFloat(BaseModel):
         return value
     
 class RangedInt(BaseModel):
+    type: str = 'int'
     min: int | None
     max: int | None
     val: int

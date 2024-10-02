@@ -93,7 +93,6 @@ export default function Chat() {
                 console.error('Model not found');
                 return;
             }
-            console.log(model);
             if (model.supports_streaming) {
                 await sendMessageStream({role: 'user', content: msg});
             } else {
@@ -102,8 +101,6 @@ export default function Chat() {
             void queryClient.invalidateQueries(chatId);
         }
     };
-
-    console.log(models);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {

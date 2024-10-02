@@ -1,8 +1,16 @@
+export interface RangedNumber {
+    type: 'float' | 'int';
+    min: number | null;
+    max: number | null;
+    val: number;
+}
+
 export interface Message {
     role: 'user' | 'assistant' | 'system';
     content: string;
     id: string;
     model?: string;
+    config?: Record<string, RangedNumber>;
 }
 
 export type MessageView = Pick<Message, "content" | "role"> & Partial<Message>;
@@ -14,6 +22,7 @@ export interface Chat {
     messages?: Message[];
     system_prompt?: string;
     default_model: string;
+    config: Record<string, unknown>;
 }
 
 export const MODEL_API_PROVIDERS = ['openai', 'anthropic'] as const;
@@ -33,4 +42,5 @@ export interface Model {
     human_name: string;
     api_name: string;
     supports_streaming: boolean;
+    config: Record<string, RangedNumber>;
 }

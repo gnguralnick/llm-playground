@@ -1,7 +1,7 @@
 import styles from './chatOptions.module.scss';
 //import clsx from 'clsx';
 
-import { Chat as ChatType, Model } from '../../types';
+import { Chat as ChatType, Model, RangedNumber } from '../../types';
 
 import Select from 'react-select';
 
@@ -20,6 +20,46 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
     let modelValue = undefined;
     if (models && chat.default_model) {
         modelValue = {label: models.find(m => m.api_name === chat.default_model)?.human_name, value: chat.default_model};
+    }
+
+    const renderConfigItem = (key: string, index: number) => {
+        const configItem = chat.config[key] as RangedNumber;
+        
+        if (configItem.max === null || configItem.min === null) {
+            return <div key={index} className={styles.formItem}>
+                <label htmlFor={key}>{key.replace(/_/g, ' ')}</label>
+                <input 
+                    type="number"
+                    id={key} 
+                    min={configItem.min ?? undefined}
+                    max={configItem.max ?? undefined}
+                    value={configItem.val} 
+                    onChange={(e) => updateChat({...chat, config: {...chat.config, [key]: {...configItem, val: parseFloat(e.target.value)}}})}
+                    />
+            </div>;
+        }
+        const step = configItem.type === 'int' ? 1 : 0.01;
+        const percent = (configItem.val - configItem.min) / (configItem.max - configItem.min) * 100;
+        return <div key={index} className={styles.formItem}>
+            <label htmlFor={key}>{key.replace(/_/g, ' ')}</label>
+            <div className={styles.rangeCtr}>
+                <span>{configItem.min}</span>
+                <div className={styles.rangeWrapper}>
+                    <input 
+                        type="range"
+                        id={key} 
+                        min={configItem.min ?? -Infinity} 
+                        max={configItem.max ?? Infinity} 
+                        step={step} 
+                        value={configItem.val} 
+                        onChange={(e) => updateChat({...chat, config: {...chat.config, [key]: {...configItem, val: parseFloat(e.target.value)}}})}
+                        />
+                    <span style={{position: 'absolute', bottom: 0, left: `${percent}%`, transform: 'translateX(-25%)'}}>{configItem.val}</span>
+                </div>
+                <span>{configItem.max}</span>
+            </div>
+
+        </div>
     }
     
     return (
@@ -49,6 +89,7 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
                         onChange={(selected) => updateChat({...chat, default_model: selected?.value ?? ''})}
                     />
                 </div>
+                {models && Object.keys(chat.config).map(renderConfigItem)}
             </form>
 
         </div>

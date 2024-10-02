@@ -1,5 +1,6 @@
 .chatOptions {
     padding: 0 1rem;
+    overflow: scroll;
 
     .form {
         display: flex;
@@ -30,6 +31,10 @@
             color: darkgrey;
         }
 
+        label {
+            text-transform: capitalize;
+        }
+
         input {
             padding: 0.5rem;
             border: 1px solid #ccc;
@@ -45,6 +50,28 @@
             font-size: 1rem;
             background-color: #4e4e4e;
             min-height: 5rem;
+        }
+
+        .rangeCtr {
+            width: 100%;
+            display: flex;
+
+            align-items: center;
+            gap: 1rem;
+            
+
+            .rangeWrapper {
+                flex: 1;
+                position: relative;
+                padding-bottom: 1rem;
+
+                input {
+                    padding: 0;
+                    width: 100%;
+                }
+            }
+
+            
         }
 
         .select {
