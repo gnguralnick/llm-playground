@@ -24,7 +24,7 @@ function SidebarLoading() {
     );
 }
 
-export default function Sidebar() {
+export default function Sidebar({show, toggleShow}: {show: boolean, toggleShow: () => void}) {
 
     const { chatId: activeChat } = useParams();
     const navigate = useNavigate();
@@ -76,7 +76,10 @@ export default function Sidebar() {
     }
 
     return (
-        <div className={cx(styles.sidebar)}>
+        <div className={styles.sidebar + (show ? ` ${styles.show}` : '')}>
+            <button className={styles.toggleButton} onClick={toggleShow}>
+                Hide Sidebar
+            </button>
             <button className={styles.createChatButton} onClick={() => createChatMutation.mutate()}>
                 <FontAwesomeIcon icon={faPlus} />
             </button>

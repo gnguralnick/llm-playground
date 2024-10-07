@@ -1,14 +1,28 @@
 .sidebar {
-    width: 20%;
+    display: flex;
+    width: 0%;
     min-height: inherit;
     height: 100%;
     max-height: 100vh;
     box-sizing: border-box;
     background-color: #333;
-    padding: 10px;
-    display: flex;
+    padding: 0;
     flex-direction: column;
     overflow: none;
+
+    transition: width 0.3s ease;
+
+    visibility: hidden;
+
+    &.show {
+        width: 20%;
+        visibility: visible;
+        padding: 10px;
+    }
+}
+
+.toggleButton {
+    margin-bottom: 0.5rem;
 }
 
 .chatsList {
