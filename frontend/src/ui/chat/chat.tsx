@@ -11,7 +11,7 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useEditChat, useGetChat, useGetModels, useSendMessage, useSendMessageStream } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
-import { Chat as ChatType, Message } from '../../types';
+import { Chat as ChatType, MessageView } from '../../types';
 import { useQueryClient } from 'react-query';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -110,7 +110,7 @@ export default function Chat() {
         }
     };
 
-    const renderMessage = (message: Message, index: number, scroll?: boolean) => {
+    const renderMessage = (message: MessageView, index: number, scroll?: boolean) => {
         if (message.role === 'system') {
             return <div key={index} className={cx(styles.messageContainer, styles.system)}>
                 <button onClick={() => setShowSystem(!showSystem)} className={styles.systemButton}>
@@ -204,7 +204,7 @@ export default function Chat() {
         return <div className={styles.chatContainer}>
             <ChatOptions 
                 chat={editing} 
-                updateChat={setEditing}
+                updateChat={(updateFn) => setEditing(c => c === null ? null : updateFn(c))} // this check is needed for typescript but editing will never actually be null here
                 modelsLoading={modelsAreLoading}
                 models={models}
                 />

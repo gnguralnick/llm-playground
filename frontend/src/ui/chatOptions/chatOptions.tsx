@@ -1,13 +1,15 @@
 import styles from './chatOptions.module.scss';
 
-import { Chat as ChatType, Model, RangedNumber } from '../../types';
+import { Chat as ChatType, Model } from '../../types';
 
 import Select from 'react-select';
 import { useEffect } from 'react';
 
+type UpdateChatType = ((updateFn: (currentChat: ChatType) => ChatType) => void);
+
 interface ChatOptionsProps {
     chat: ChatType;
-    updateChat: React.Dispatch<React.SetStateAction<ChatType>>;
+    updateChat: UpdateChatType;
     models?: Model[];
     modelsLoading: boolean;
 }
@@ -27,7 +29,7 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
             if (!model) return;
             for (const key of Object.keys(chat.config)) {
                 if (model.config[key] === undefined) {
-                    updateChat((v: ChatType) => ({...v, config: model.config}));
+                    updateChat((v: ChatType): ChatType => ({...v, config: model.config}));
                     break;
                 }
             }
@@ -35,7 +37,7 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
     }, [models, chat.default_model, chat.config, updateChat]);
 
     const renderConfigItem = (key: string, index: number) => {
-        const configItem = chat.config[key] as RangedNumber;
+        const configItem = chat.config[key];
 
         if (!configItem) return null;
         
@@ -48,7 +50,7 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
                     min={configItem.min ?? undefined}
                     max={configItem.max ?? undefined}
                     value={configItem.val} 
-                    onChange={(e) => updateChat({...chat, config: {...chat.config, [key]: {...configItem, val: parseFloat(e.target.value)}}})}
+                    onChange={(e) => updateChat(c => ({...c, config: {...c.config, [key]: {...configItem, val: parseFloat(e.target.value)}}}))}
                     />
             </div>;
         }
@@ -66,7 +68,7 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
                         max={configItem.max ?? Infinity} 
                         step={step} 
                         value={configItem.val} 
-                        onChange={(e) => updateChat({...chat, config: {...chat.config, [key]: {...configItem, val: parseFloat(e.target.value)}}})}
+                        onChange={(e) => updateChat(c => ({...c, config: {...c.config, [key]: {...configItem, val: parseFloat(e.target.value)}}}))}
                         />
                     <span style={{position: 'absolute', bottom: 0, left: `${percent}%`, transform: 'translateX(-25%)'}}>{configItem.val}</span>
                 </div>
@@ -82,12 +84,12 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
             <form className={styles.form}>
                 <div className={styles.formItem}>
                     <label htmlFor="title">Title</label>
-                    <input type="text" id="title" value={chat.title} onChange={(e) => updateChat({...chat, title: e.target.value})} />
+                    <input type="text" id="title" value={chat.title} onChange={(e) => updateChat(c => ({...c, title: e.target.value}))} />
                 </div>
                 {chat.system_prompt && <div className={styles.formItem}>
                     <label htmlFor="systemPrompt">System Prompt</label>
                     {chat.messages && chat.messages.length > 1 && <p className={styles.notice}>Note: Changing the system prompt will not affect existing messages</p>}
-                    <textarea id="systemPrompt" value={chat.system_prompt ?? ''} onChange={(e) => updateChat({...chat, system_prompt: e.target.value })} />
+                    <textarea id="systemPrompt" value={chat.system_prompt ?? ''} onChange={(e) => updateChat(c => ({...c, system_prompt: e.target.value }))} />
                 </div>}
                 <div className={styles.formItem}>
                     <label htmlFor="model">Model</label>
@@ -100,7 +102,7 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
                             option: (state) => state.isSelected ? (styles.selected + ' ' + styles.option) : styles.option
                         }}
                         value={modelValue}
-                        onChange={(selected) => updateChat({...chat, default_model: selected?.value ?? ''})}
+                        onChange={(selected) => updateChat(c => ({...c, default_model: selected?.value ?? ''}))}
                     />
                 </div>
                 {models && Object.keys(chat.config).map(renderConfigItem)}
