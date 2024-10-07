@@ -1,0 +1,8 @@
+__pycache__
+*.__pycache__
+*.pyo
+.git
+**/.vscode/*
+!.vscode/extensions.json
+.DS_Store
+venv
