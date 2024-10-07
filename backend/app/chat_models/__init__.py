@@ -11,6 +11,7 @@ class ModelInfo(BaseModel):
     api_name: str
     api_provider: ModelAPI
     requires_key: bool = False
+    user_has_key: bool = False
     supports_streaming: bool = False
     config: model_config_type
 

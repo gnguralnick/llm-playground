@@ -43,4 +43,6 @@ export interface Model {
     api_name: string;
     supports_streaming: boolean;
     config: Record<string, RangedNumber>;
+    requires_key: boolean;
+    user_has_key: boolean;
 }

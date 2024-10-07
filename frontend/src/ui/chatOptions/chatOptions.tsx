@@ -16,7 +16,7 @@ interface ChatOptionsProps {
 
 export default function ChatOptions({chat, updateChat, models, modelsLoading}: ChatOptionsProps) {
 
-    const modelOptions = models?.map(m => ({label: m.human_name, value: m.api_name})) ?? [{label: 'Loading', value: 'Loading'}];
+    const modelOptions = models?.filter(m => !m.requires_key || m.user_has_key).map(m => ({label: m.human_name, value: m.api_name})) ?? [{label: 'Loading', value: 'Loading'}];
     let modelValue = undefined;
     if (models && chat.default_model) {
         modelValue = {label: models.find(m => m.api_name === chat.default_model)?.human_name, value: chat.default_model};

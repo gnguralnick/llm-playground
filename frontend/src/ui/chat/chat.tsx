@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import styles from './chat.module.scss';
 import clsx from 'clsx';
 import { ArrowUp } from '../assets/icons';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -57,6 +57,8 @@ export default function Chat() {
     const {isLoading: chatIsLoading, isError: chatIsError, error: chatError, data: chat } = useGetChat(chatId!);
     const {isLoading: modelsAreLoading, data: models} = useGetModels();
 
+    const navigate = useNavigate();
+
     const setEditingChat = (chat: ChatType) => {
         setEditing({...chat, system_prompt: chat.messages?.find(m => m.role === 'system')?.content});
     }
@@ -70,6 +72,15 @@ export default function Chat() {
     useEffect(() => {
         setEditing(null);
     }, [chatId]);
+
+    useEffect(() => {
+        if (models) {
+            const usableModels = models.filter(m => !m.requires_key || m.user_has_key);
+            if (usableModels.length === 0) {
+                navigate('/user/');
+            }
+        }
+    }, [models, navigate]);
 
     const {sendMessage: sendMessageStream, response: messageResponse, loading: messageStreamLoading, sentMessage} = useSendMessageStream(chatId!);
     const sendMessageMutation = useSendMessage(chatId!);
@@ -101,10 +112,12 @@ export default function Chat() {
                 sendMessageMutation.mutate({role: 'user', content: msg});
             }
             void queryClient.invalidateQueries(chatId);
+            setInput('');
         }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        e.stopPropagation();
         if (e.key === 'Enter' && !e.shiftKey) {
             void handleSend();
         }

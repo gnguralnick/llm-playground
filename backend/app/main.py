@@ -158,6 +158,7 @@ def read_chat(chat: data.models.Chat = Depends(get_chat)):
 
 @app.put('/chat/{chat_id}', response_model=data.schemas.Chat)
 def update_chat(chat: data.schemas.ChatCreate, db_chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db)):
+    print('hi')
     return data.crud.update_chat(db=db, chat_id=cast(UUID4, db_chat.id), chat=chat)
 
 @app.delete('/chat/{chat_id}')
@@ -239,12 +240,20 @@ async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreat
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get('/models/', response_model=list[ModelInfo])
-def read_models(_: data.schemas.User = Depends(get_current_user)):
-    return get_models()
+def read_models(db: data.Session = Depends(get_db), user: data.schemas.User = Depends(get_current_user)):
+    models = get_models()
+    for model in models:
+        if model.requires_key:
+            has_key = data.crud.get_api_key(db, cast(UUID4, user.id), model.api_provider) is not None
+            model.user_has_key = has_key
+    return models
 
 @app.get('/models/{model_name}', response_model=ModelInfo)
-def read_model(model_name: str, _: data.schemas.User = Depends(get_current_user)):
+def read_model(model_name: str, db: data.Session = Depends(get_db), user: data.schemas.User = Depends(get_current_user)):
     model_info = get_chat_model_info(model_name)
+    if model_info.requires_key:
+        has_key = data.crud.get_api_key(db, cast(UUID4, user.id), model_info.api_provider) is not None
+        model_info.user_has_key = has_key
     return model_info
 
 @app.get('/')
