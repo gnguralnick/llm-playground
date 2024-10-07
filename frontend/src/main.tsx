@@ -15,6 +15,7 @@ import ChatPage from './pages/chat/chat.tsx';
 import Chat from './ui/chat/chat.tsx';
 import Login from './pages/login/login.tsx';
 import User from './pages/user/user.tsx';
+import Signup from './pages/signup/signup.tsx';
 
 const router = createBrowserRouter([
   {
@@ -43,6 +44,10 @@ const router = createBrowserRouter([
     path: '/login',
     element: <Login />,
   },
+  {
+    path: '/signup',
+    element: <Signup />,
+  }
 ]);
 
 const queryClient = new QueryClient();

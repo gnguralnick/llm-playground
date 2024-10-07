@@ -101,7 +101,7 @@ export function useSendMessageStream(chatId: string) {
         setLoading(true);
         setSentMessage(msg);
         setResponse({role: 'assistant', content: ''});
-        const response = await backendFetch(`/chat/${chatId}/stream`, {
+        const response = await backendFetch(`/chat/${chatId}/stream/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -186,7 +186,7 @@ export function useDeleteChat(navigate?: (url: string) => void, currentChatId?: 
     const { token, user } = useUser();
     return useMutation({
         mutationFn: async (chat: Chat) => {
-            const response = await backendFetch(`/chat/${chat.id}`, {
+            const response = await backendFetch(`/chat/${chat.id}/`, {
                 method: 'DELETE'
             }, token);
             const json: unknown = await response.json();
