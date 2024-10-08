@@ -24,7 +24,7 @@ class MessageContent(MessageContentBase):
 
 class MessageBase(BaseModel):
     role: Role
-    content: MessageContentBase
+    content: list[MessageContentBase]
     model: str | None = None
     config: model_config_type | None = None
     
@@ -32,7 +32,7 @@ class MessageBase(BaseModel):
         use_enum_values = True
     
 class MessageCreate(MessageBase):
-    content: MessageContentCreate
+    content: list[MessageContentCreate]
 
 class Message(MessageBase):
     id: UUID4
@@ -49,3 +49,24 @@ class MessageView(MessageBase):
     
     class Config:
         orm_mode = True
+
+class MessageBuilder:
+        
+        def __init__(self, role: Role, model: str | None = None, config: model_config_type | None = None):
+            self.role = role
+            self.model = model
+            self.config = config
+            self.content = []
+            
+        def add_text(self, content: str):
+            self.content.append(MessageContentCreate(type=MessageContentType.TEXT, content=content, order=len(self.content)))
+            return self
+        
+        def add_image(self, content: str, image_type: str):
+            self.content.append(MessageContentCreate(type=MessageContentType.IMAGE, content=content, image_type=image_type, order=len(self.content)))
+            return self
+        
+        def build(self):
+            if len(self.content) == 0:
+                raise ValueError('No content')
+            return MessageCreate(role=self.role, content=self.content, model=self.model, config=self.config)

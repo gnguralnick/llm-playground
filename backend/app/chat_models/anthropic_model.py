@@ -1,6 +1,7 @@
 from collections.abc import Generator
+from typing import Iterable, Sequence
 import anthropic
-from chat_models.chat_model import StreamingChatModel, Message, AssistantMessage
+from chat_models.chat_model import StreamingChatModel, Message, AssistantMessage, TextMessage
 from util import ModelAPI, Role, ModelConfig, RangedFloat, RangedInt
 
 class AnthropicConfig(ModelConfig):
@@ -31,12 +32,30 @@ class AnthropicModel(StreamingChatModel):
             raise ValueError('API key is required')
         self._client = anthropic.Anthropic(api_key=api_key)
         
-    def chat(self, messages: list[Message]) -> AssistantMessage:
+    def process_messages(self, messages: Sequence[Message]) -> Iterable[anthropic.types.MessageParam]:
+        res: list[anthropic.types.MessageParam] = []
+        for m in messages:
+            if m.role != Role.SYSTEM:
+                msg = {
+                    'role': m.role,
+                    'content': []
+                }
+                for c in m.contents:
+                    content = {}
+                    if isinstance(c, TextMessage):
+                        content['type'] = 'text'
+                        content['text'] = c.content
+                    else:
+                        raise ValueError('Unsupported message type')
+                    msg['content'].append(content)
+        return res
+        
+    def chat(self, messages: list[TextMessage]) -> AssistantMessage:
         system_msg = [m for m in messages if m.role == Role.SYSTEM][0]
         response = self._client.messages.create(
             model=self.api_name,
-            messages=[{'role': m.role, 'content': m.content} for m in messages if m.role != Role.SYSTEM], # type: ignore
-            system=system_msg.content,
+            messages=self.process_messages(messages),
+            system=system_msg.contents[0].content,
             **self.config.dump_values()
         )
         
@@ -44,14 +63,14 @@ class AnthropicModel(StreamingChatModel):
             print(response.error)
             raise ValueError(response.error.type + ': ' + response.error.message)
         
-        return AssistantMessage(content=response.content[0].text, model=self.api_name)
+        return AssistantMessage(contents=response.content[0].text, model=self.api_name)
     
-    def chat_stream(self, messages: list[Message]) -> Generator[str, None, None]:
+    def chat_stream(self, messages: list[TextMessage]) -> Generator[str, None, None]:
         system_msg = [m for m in messages if m.role == Role.SYSTEM][0]
         with self._client.messages.stream(
             model=self.api_name,
-            messages=[{'role': m.role, 'content': m.content} for m in messages if m.role != Role.SYSTEM], # type: ignore
-            system=system_msg.content,
+            messages=self.process_messages(messages),
+            system=system_msg.contents[0].content,
             **self.config.dump_values()
         ) as stream:
             for text in stream.text_stream:

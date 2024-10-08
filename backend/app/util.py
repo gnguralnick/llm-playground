@@ -6,7 +6,7 @@ class Role(str, Enum):
     ASSISTANT = 'assistant'
     SYSTEM = 'system'
     
-class MessageContent(str, Enum):
+class MessageContentType(str, Enum):
     TEXT = 'text'
     IMAGE = 'image'
     
@@ -38,6 +38,17 @@ class RangedInt(BaseModel):
     def validate_val(cls, value, info: ValidationInfo):
         if (info.data['min'] and value < info.data['min']) or (info.data['max'] and value > info.data['max']):
             raise ValueError(f'Value must be between {cls.min} and {cls.max}')
+        return value
+    
+class OptionedString(BaseModel):
+    options: list[str]
+    val: str
+    
+    @field_validator('val')
+    @classmethod
+    def validate_val(cls, value, info: ValidationInfo):
+        if value not in info.data['options']:
+            raise ValueError(f'Value must be one of {cls.options}')
         return value
     
 class ModelConfig(BaseModel):

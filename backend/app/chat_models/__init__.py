@@ -13,6 +13,7 @@ class ModelInfo(BaseModel):
     requires_key: bool = False
     user_has_key: bool = False
     supports_streaming: bool = False
+    supports_images: bool = False
     config: model_config_type
 
 model_types: list[type[ChatModel]] = openai.model_types + anthropic.model_types

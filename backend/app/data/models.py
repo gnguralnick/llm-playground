@@ -1,9 +1,9 @@
-from sqlalchemy import Column, ForeignKey, String, Enum, DateTime, PickleType
+from sqlalchemy import Column, ForeignKey, Integer, String, Enum, DateTime, PickleType
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from data.database import Base
-from util import Role, ModelAPI
+from util import Role, ModelAPI, MessageContentType
 
 import uuid
 
@@ -30,22 +30,23 @@ class Chat(Base):
     user = relationship('User', back_populates='chats')
     messages = relationship('Message', back_populates='chat', order_by='Message.created_at', cascade='all, delete-orphan')
     
-# class MessageContent(Base):
-#     __tablename__ = 'message_content'
+class MessageContent(Base):
+    __tablename__ = 'message_content'
     
-#     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-#     type = Column(Enum(Role), nullable=False)
-#     content = Column(String, nullable=False)
-#     message_id = Column(UUID(as_uuid=True), ForeignKey('message.id'), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    type = Column(Enum(MessageContentType), nullable=False)
+    content = Column(String, nullable=False)
+    image_type = Column(String, nullable=True)
+    message_id = Column(UUID(as_uuid=True), ForeignKey('message.id'), nullable=False)
+    order = Column(Integer, nullable=False)
     
-#     message = relationship('Message', back_populates='content')
+    message = relationship('Message', back_populates='content')
 
 class Message(Base):
     __tablename__ = 'message'
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     role = Column(Enum(Role), nullable=False)
-    content = Column(String, nullable=False)
     model = Column(String, nullable=True)
     config = Column(PickleType, nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey('user.id'), nullable=False)
@@ -54,6 +55,7 @@ class Message(Base):
     
     user = relationship('User')
     chat = relationship('Chat', back_populates='messages')
+    content = relationship('MessageContent', back_populates='message', cascade='all, delete-orphan', order_by='MessageContent.order')
     
 class APIKey(Base):
     __tablename__ = 'api_key'

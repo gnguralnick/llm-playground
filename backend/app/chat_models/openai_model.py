@@ -1,7 +1,9 @@
 from collections.abc import Generator
-from chat_models.chat_model import StreamingChatModel, Message, AssistantMessage
+from typing import Iterable
+from chat_models.chat_model import ImageMessageContent, ImageStreamingChatModel, Message, AssistantMessage, TextMessageContent
 from openai import OpenAI
-from util import ModelAPI, ModelConfig, RangedFloat, RangedInt
+import openai.types.chat as chat_types
+from util import ModelAPI, ModelConfig, RangedFloat, RangedInt, MessageContentType, OptionedString
 
 class OpenAIConfig(ModelConfig):
     frequency_penalty: RangedFloat = RangedFloat(min=-2, max=2, val=0)
@@ -10,6 +12,7 @@ class OpenAIConfig(ModelConfig):
     presence_penalty: RangedFloat = RangedFloat(min=-2, max=2, val=0)
     temperature: RangedFloat = RangedFloat(min=0, max=2, val=1)
     top_p: RangedFloat = RangedFloat(min=0, max=1, val=1)
+    image_detail: OptionedString = OptionedString(options=['auto', 'low', 'high'], val='auto')
     
     def dump_values(self) -> dict:
         return {
@@ -21,7 +24,8 @@ class OpenAIConfig(ModelConfig):
             'top_p': self.top_p.val
         }
     
-class OpenAIModel(StreamingChatModel):
+    
+class OpenAIModel(ImageStreamingChatModel):
 
     api_name: str
     human_name: str
@@ -36,22 +40,46 @@ class OpenAIModel(StreamingChatModel):
             raise ValueError('API key is required')
         self._client = OpenAI(api_key=api_key)
         
+    def process_messages(self, messages: list[Message]) -> Iterable[chat_types.ChatCompletionMessageParam]:
+        res = []
+        for m in messages:
+            msg = {
+                'role': m.role,
+                'content': []
+            }
+            for c in m.contents:
+                content = {}
+                if isinstance(c, TextMessageContent):
+                    content['type'] = 'text'
+                    content['text'] = c.content
+                elif isinstance(c, ImageMessageContent):
+                    content['type'] = 'image_url'
+                    content['image_url'] = {
+                        'url': f"data:image/{c.image_type};base64,{c.get_image()}",
+                        'detail': self.config.image_detail.val
+                    }
+                else:
+                    raise ValueError('Unsupported message type')
+                msg['content'].append(content)
+            res.append(msg)
+        return res
+        
     def chat(self, messages: list[Message]) -> AssistantMessage:
         completion = self._client.chat.completions.create(
             model=self.api_name,
-            messages=[{'role': m.role, 'content': m.content} for m in messages], # type: ignore
+            messages=self.process_messages(messages),
             **self.config.dump_values()
         )
         
         if completion.choices[0].message.content is None:
             raise ValueError('No completion content')
         
-        return AssistantMessage(content=completion.choices[0].message.content, model=self.api_name)
+        return AssistantMessage(contents=completion.choices[0].message.content, model=self.api_name)
     
     def chat_stream(self, messages: list[Message]) -> Generator[str, None, None]:
         stream = self._client.chat.completions.create(
             model=self.api_name,
-            messages=[{'role': m.role, 'content': m.content} for m in messages], # type: ignore
+            messages=self.process_messages(messages),
             stream=True,
             **self.config.dump_values()
         )

@@ -12,7 +12,7 @@ from typing import cast
 from datetime import datetime, timedelta, timezone
 
 from chat_models import get_chat_model, get_models, ModelInfo, ChatModel, StreamingChatModel, get_chat_model_info
-from util import ModelConfig
+from util import ModelConfig, Role
 
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
@@ -138,7 +138,7 @@ def read_chats(skip: int = 0, limit: int = 100, db: data.Session = Depends(get_d
 @app.post('/chat/', response_model=data.schemas.Chat)
 def create_chat(chat: data.schemas.ChatCreate, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user)):
     chat_db = data.crud.create_chat(db=db, chat=chat, user_id=current_user.id)
-    system_msg = data.schemas.MessageCreate(role=data.schemas.Role.SYSTEM, content=chat.system_prompt)
+    system_msg = data.schemas.MessageBuilder(role=Role.SYSTEM).add_text(chat.system_prompt).build()
     if system_user is None:
         raise HTTPException(status_code=500, detail='System user not found')
     data.crud.create_message(db=db, message=system_msg, user_id=cast(UUID4, system_user.id), chat_id=cast(UUID4, chat_db.id))
@@ -158,7 +158,6 @@ def read_chat(chat: data.models.Chat = Depends(get_chat)):
 
 @app.put('/chat/{chat_id}', response_model=data.schemas.Chat)
 def update_chat(chat: data.schemas.ChatCreate, db_chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db)):
-    print('hi')
     return data.crud.update_chat(db=db, chat_id=cast(UUID4, db_chat.id), chat=chat)
 
 @app.delete('/chat/{chat_id}')
@@ -214,7 +213,8 @@ def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Gener
         message += token
         yield token
     
-    data.crud.update_message(db=db, message_id=msg_id, message=data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content=message, model=model))
+    new_message = data.schemas.MessageBuilder(role=data.schemas.Role.ASSISTANT, model=model).add_text(message).build()
+    data.crud.update_message(db=db, message_id=msg_id, message=new_message)
 
 @app.post('/chat/{chat_id}/stream/', response_model=dict)
 async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreate, background_tasks: BackgroundTasks, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
@@ -227,7 +227,7 @@ async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreat
     
     db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     
-    loading_msg = data.schemas.MessageCreate(role=data.schemas.Role.ASSISTANT, content='LOADING', model=model.api_name, config=config)
+    loading_msg = data.schemas.MessageBuilder(role=data.schemas.Role.ASSISTANT, model=model.api_name, config=config).add_text('LOADING').build()
     loading_msg_db = data.crud.create_message(db=db, message=loading_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
     
     try:
