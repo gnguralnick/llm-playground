@@ -6,6 +6,10 @@ class Role(str, Enum):
     ASSISTANT = 'assistant'
     SYSTEM = 'system'
     
+class MessageContent(str, Enum):
+    TEXT = 'text'
+    IMAGE = 'image'
+    
 class ModelAPI(str, Enum):
     OPENAI = 'openai'
     ANTHROPIC = 'anthropic'

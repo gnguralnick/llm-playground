@@ -1,7 +1,6 @@
 from collections.abc import Generator
 import anthropic
-from chat_models.chat_model import ChatModel, Message, AssistantMessage
-from abc import ABC
+from chat_models.chat_model import StreamingChatModel, Message, AssistantMessage
 from util import ModelAPI, Role, ModelConfig, RangedFloat, RangedInt
 
 class AnthropicConfig(ModelConfig):
@@ -19,11 +18,10 @@ class AnthropicConfig(ModelConfig):
         }
     
 
-class AnthropicModel(ChatModel, ABC):
+class AnthropicModel(StreamingChatModel):
     
     api_provider: ModelAPI = ModelAPI.ANTHROPIC
     requires_key: bool = True
-    supports_streaming: bool = True
     config: AnthropicConfig = AnthropicConfig()
     config_type = AnthropicConfig
     
@@ -63,32 +61,20 @@ class Claude3Point5Sonnet(AnthropicModel):
     
     api_name: str = 'claude-3-5-sonnet-20240620'
     human_name: str = 'Claude 3.5 Sonnet'
-    
-    def __init__(self, api_key, config) -> None:
-        super().__init__(api_key, config)
         
 class Claude3Opus(AnthropicModel):
     
     api_name: str = 'claude-3-opus-20240229'
     human_name: str = 'Claude 3 Opus'
-    
-    def __init__(self, api_key, config) -> None:
-        super().__init__(api_key, config)
         
 class Claude3Sonnet(AnthropicModel):
     
     api_name: str = 'claude-3-sonnet-20240229'
     human_name: str = 'Claude 3 Sonnet'
-    
-    def __init__(self, api_key, config) -> None:
-        super().__init__(api_key, config)
         
 class Claude3Haiku(AnthropicModel):
     
     api_name: str = 'claude-3-haiku-20240307'
     human_name: str = 'Claude 3 Haiku'
-    
-    def __init__(self, api_key, config) -> None:
-        super().__init__(api_key, config)
         
 model_types = [Claude3Point5Sonnet, Claude3Opus, Claude3Sonnet, Claude3Haiku]

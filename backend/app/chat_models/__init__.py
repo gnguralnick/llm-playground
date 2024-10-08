@@ -1,4 +1,4 @@
-from .chat_model import ChatModel
+from .chat_model import ChatModel, StreamingChatModel
 from . import openai_model as openai
 from . import anthropic_model as anthropic
 from pydantic import BaseModel

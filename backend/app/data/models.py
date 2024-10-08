@@ -29,6 +29,16 @@ class Chat(Base):
     
     user = relationship('User', back_populates='chats')
     messages = relationship('Message', back_populates='chat', order_by='Message.created_at', cascade='all, delete-orphan')
+    
+# class MessageContent(Base):
+#     __tablename__ = 'message_content'
+    
+#     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+#     type = Column(Enum(Role), nullable=False)
+#     content = Column(String, nullable=False)
+#     message_id = Column(UUID(as_uuid=True), ForeignKey('message.id'), nullable=False)
+    
+#     message = relationship('Message', back_populates='content')
 
 class Message(Base):
     __tablename__ = 'message'

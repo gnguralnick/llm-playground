@@ -11,7 +11,7 @@ from typing import cast
 
 from datetime import datetime, timedelta, timezone
 
-from chat_models import get_chat_model, get_models, ModelInfo, ChatModel, get_chat_model_info
+from chat_models import get_chat_model, get_models, ModelInfo, ChatModel, StreamingChatModel, get_chat_model_info
 from util import ModelConfig
 
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -222,7 +222,7 @@ async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreat
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
 
-    if not model.supports_streaming:
+    if not isinstance(model, StreamingChatModel):
         raise HTTPException(status_code=400, detail='Model does not support streaming')
     
     db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)

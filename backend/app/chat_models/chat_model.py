@@ -28,7 +28,6 @@ class ChatModel(ABC):
     api_name: str
     api_provider: ModelAPI
     requires_key: bool = False
-    supports_streaming: bool = False
     config: ModelConfig
     config_type: type[ModelConfig]
     
@@ -54,6 +53,20 @@ class ChatModel(ABC):
         """
         pass
     
+    @classmethod
+    def generate_model_info(cls):
+        """Generate and return information about the model.
+
+        Returns:
+            ModelInfo: Information about the model.
+        """
+        from chat_models import ModelInfo
+        attrs = {x: getattr(cls, x) for x in dir(cls) if not (x.startswith('__') or callable(getattr(cls, x)))}
+        return ModelInfo(**attrs)
+
+class StreamingChatModel(ChatModel):
+    
+    @abstractmethod
     def chat_stream(self, messages: list[Message]) -> Generator[str, None]:
         """Send a list of messages to the model and stream the response.
 
@@ -67,11 +80,6 @@ class ChatModel(ABC):
     
     @classmethod
     def generate_model_info(cls):
-        """Generate and return information about the model.
-
-        Returns:
-            ModelInfoFull: Information about the model.
-        """
-        from chat_models import ModelInfo
-        attrs = {x: getattr(cls, x) for x in dir(cls) if not (x.startswith('__') or callable(getattr(cls, x)))}
-        return ModelInfo(**attrs)
+        info = super().generate_model_info()
+        info.supports_streaming = True
+        return info

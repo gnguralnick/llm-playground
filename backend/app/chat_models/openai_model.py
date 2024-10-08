@@ -1,6 +1,5 @@
 from collections.abc import Generator
-from chat_models.chat_model import ChatModel, Message, AssistantMessage
-from abc import ABC
+from chat_models.chat_model import StreamingChatModel, Message, AssistantMessage
 from openai import OpenAI
 from util import ModelAPI, ModelConfig, RangedFloat, RangedInt
 
@@ -22,13 +21,12 @@ class OpenAIConfig(ModelConfig):
             'top_p': self.top_p.val
         }
     
-class OpenAIModel(ChatModel, ABC):
+class OpenAIModel(StreamingChatModel):
 
     api_name: str
     human_name: str
     api_provider: ModelAPI = ModelAPI.OPENAI
     requires_key: bool = True
-    supports_streaming: bool = True
     config: OpenAIConfig = OpenAIConfig()
     config_type = OpenAIConfig
     
@@ -66,16 +64,10 @@ class GPT4OMini(OpenAIModel):
     
     api_name: str = 'gpt-4o-mini'
     human_name: str = 'GPT-4o Mini'
-    
-    def __init__(self, api_key, config) -> None:
-        super().__init__(api_key, config)
         
 class GPT4O(OpenAIModel):
     
     api_name: str = 'gpt-4o'
     human_name: str = 'GPT-4o'
-    
-    def __init__(self, api_key, config) -> None:
-        super().__init__(api_key, config)
         
 model_types = [GPT4OMini, GPT4O]
