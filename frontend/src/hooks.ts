@@ -215,7 +215,7 @@ export function useDeleteChat(navigate?: (url: string) => void, currentChatId?: 
     const { token, user } = useUser();
     return useMutation({
         mutationFn: async (chat: Chat) => {
-            const response = await backendFetch(`/chat/${chat.id}/`, {
+            const response = await backendFetch(`/chat/${chat.id}`, {
                 method: 'DELETE'
             }, token);
             const json: unknown = await response.json();
@@ -293,4 +293,15 @@ export function useDeleteAPIKey() {
             void queryClient.invalidateQueries(user.id + '/api_key');
         }
     });
+}
+
+export function useRefreshSidebar() {
+    const queryClient = useQueryClient();
+    const { user } = useUser();
+
+    function refreshSidebar() {
+        void queryClient.invalidateQueries(user.id);
+    }
+
+    return refreshSidebar;
 }

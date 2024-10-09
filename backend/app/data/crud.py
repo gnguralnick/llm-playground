@@ -54,7 +54,7 @@ def update_chat(db: Session, chat_id: UUID4, chat: schemas.ChatCreate):
     db.refresh(db_chat)
     return db_chat
 
-def create_message(db: Session, message: schemas.MessageCreate, user_id: UUID4, chat_id: UUID4):
+def create_message(db: Session, message: schemas.MessageBase, user_id: UUID4, chat_id: UUID4):
     contents = message.contents
     message_dict = message.model_dump()
     message_dict.pop('contents', None)
@@ -74,7 +74,7 @@ def create_message(db: Session, message: schemas.MessageCreate, user_id: UUID4, 
         db.commit()
         raise e
 
-def update_message(db: Session, message_id: UUID4, message: schemas.MessageCreate):
+def update_message(db: Session, message_id: UUID4, message: schemas.MessageBase):
     db_message = db.query(models.Message).filter(models.Message.id == message_id).first()
     if db_message is None:
         raise ValueError('Message not found')

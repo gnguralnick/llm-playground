@@ -9,7 +9,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { backendFetch, useEditChat, useGetChat, useGetModels, useSendMessage, useSendMessageStream, useUser } from '../../hooks';
+import { backendFetch, useEditChat, useGetChat, useGetModels, useRefreshSidebar, useSendMessage, useSendMessageStream, useUser } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
 import { Chat as ChatType, ImageMessageContent, MessageView, TextMessageContent } from '../../types';
 import { useQueryClient } from 'react-query';
@@ -61,6 +61,7 @@ export default function Chat() {
     const queryClient = useQueryClient();
     const {isLoading: chatIsLoading, isError: chatIsError, error: chatError, data: chat } = useGetChat(chatId!);
     const {isLoading: modelsAreLoading, data: models} = useGetModels();
+    const refreshSidebar = useRefreshSidebar();
 
     const navigate = useNavigate();
 
@@ -139,6 +140,11 @@ export default function Chat() {
             } else {
                 sendMessageMutation.mutate({role: 'user', contents: contents});
             }
+
+            if (chat.messages?.length === 0 || (chat.messages?.length === 1 && chat.messages[0].role === 'system')) {
+                refreshSidebar();
+            }
+
             void queryClient.invalidateQueries(chatId);
             setInput('');
         }

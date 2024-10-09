@@ -2,10 +2,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from util import ModelAPI, ModelConfig
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:
-    from schemas import MessageCreate as Message
+    from schemas import MessageBase as Message
 
 class ChatModel(ABC):
     """An abstract class for chat models. It defines the basic methods that all chat models should implement.
@@ -41,11 +41,11 @@ class ChatModel(ABC):
             self.config = config
 
     @abstractmethod
-    def chat(self, messages: list['Message']) -> 'Message':
+    def chat(self, messages: Sequence['Message']) -> 'Message':
         """Send a list of messages to the model and return the response.
 
         Args:
-            messages (list[Message]): A list of messages to send to the model. The last message in the list is the one to which the model should respond.
+            messages (Sequence[Message]): A list of messages to send to the model. The last message in the list is the one to which the model should respond.
 
         Returns:
             AssistantMessage: The response from the model.
@@ -69,11 +69,11 @@ class StreamingChatModel(ChatModel):
     """
     
     @abstractmethod
-    def chat_stream(self, messages: list['Message']) -> Generator[str, None]:
+    def chat_stream(self, messages: Sequence['Message']) -> Generator[str, None]:
         """Send a list of messages to the model and stream the response.
 
         Args:
-            messages (list[Message]): A list of messages to send to the model. The last message in the list is the one to which the model should respond.
+            messages (Sequence[Message]): A list of messages to send to the model. The last message in the list is the one to which the model should respond.
 
         Yields:
             Generator[str, None]: A generator that yields the response from the model in chunks. The size of the chunks is implementation-dependent.

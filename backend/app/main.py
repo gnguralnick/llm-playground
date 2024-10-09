@@ -205,10 +205,10 @@ def delete_chat(db: data.Session = Depends(get_db), current_user: schemas.User =
     db.commit()
     return {'message': 'Chat deleted', }
 
-def get_message(message: str = Form()) -> schemas.MessageCreate:
-    return schemas.MessageCreate.model_validate_json(message)
+def get_message(message: str = Form()) -> schemas.MessageBase:
+    return schemas.MessageBase.model_validate_json(message)
 
-async def get_model(message: schemas.MessageCreate = Depends(get_message), chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
+async def get_model(message: schemas.MessageBase = Depends(get_message), chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
     if message.model is not None:
         # user can select a model for a single message
         model_type = get_chat_model(message.model)
@@ -229,7 +229,7 @@ async def get_model(message: schemas.MessageCreate = Depends(get_message), chat:
     message.model = None # user messages should not have a model; this was just for the model selection
     return model, config
 
-def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: schemas.MessageCreate = Depends(get_message)) -> schemas.MessageCreate:
+def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: schemas.MessageBase = Depends(get_message)) -> schemas.MessageBase:
     """Save image files to disk and update message content to include file paths
 
     Args:
@@ -260,23 +260,48 @@ def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: 
             c.image_type = image.content_type
     return message
 
+def autogen_chat_title(db: data.Session, chat_id: UUID4, messages: list[schemas.MessageBase], model: ChatModel) -> schemas.chat.Chat:
+    db_chat = data.crud.get_chat(db, chat_id)
+    if db_chat is None:
+        raise HTTPException(status_code=404, detail='Chat not found')
+    chat_create = schemas.chat.ChatCreate.model_validate(db_chat, from_attributes=True)
+    prompt = "Below is a conversation between a user and an AI assistant. Generate a title for this chat. The title should be short and memorable. Respond with the title only. Do not include quotation marks."
+    for m in messages:
+        if m.role == Role.USER:
+            prompt += f"\nUser: {m.contents[0].content}"
+        elif m.role == Role.ASSISTANT:
+            prompt += f"\nAssistant: {m.contents[0].content}"
+            
+    prompt += "\nTitle:"
+    prompt_message = schemas.MessageBuilder(role=Role.USER).add_text(prompt).build()
+    title = model.chat([prompt_message]).contents[0].content
+    chat_create.title = title
+    
+    db_chat = data.crud.update_chat(db=db, chat_id=cast(UUID4, db_chat.id), chat=chat_create)
+    
+    return schemas.chat.Chat.model_validate(db_chat, from_attributes=True)
+    
+
 @app.post('/chat/{chat_id}/', response_model=schemas.MessageView)
-def send_message(chat_id: UUID4, message = Depends(save_images), db: data.Session = Depends(get_db), db_chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
+def send_message(chat_id: UUID4, message: schemas.MessageBase = Depends(save_images), db: data.Session = Depends(get_db), db_chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
     chat: schemas.chat.Chat = schemas.chat.Chat.model_validate(db_chat, from_attributes=True)
     
     model, config = model_with_config
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
 
-    response_msg = model.chat(cast(list, chat.messages) + [message])
+    response_msg = model.chat(chat.messages + [message])
     db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     try:
-        return data.crud.create_message(db=db, message=response_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
+        msg = data.crud.create_message(db=db, message=response_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
+        if chat.title == 'New Chat':
+            autogen_chat_title(db, chat_id, chat.messages + [message, response_msg], model)
+        return msg
     except Exception as e:
         data.crud.delete_message(db=db, message_id=cast(UUID4, db_msg.id))
         raise HTTPException(status_code=400, detail=str(e))
         
-def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Generator[str, None, None]):
+def handle_stream(msg_id: uuid.UUID, db: data.Session, model_name: str, stream: Generator[str, None, None], chat: schemas.chat.Chat, model: ChatModel):
     """Process a stream of tokens from a chat model and update the message in the database when the stream ends
 
     Args:
@@ -305,8 +330,10 @@ def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Gener
         message += token
         yield token
     
-    new_message = schemas.MessageBuilder(role=schemas.Role.ASSISTANT, model=model).add_text(message).build()
+    new_message = schemas.MessageBuilder(role=schemas.Role.ASSISTANT, model=model_name).add_text(message).build()
     data.crud.update_message(db=db, message_id=msg_id, message=new_message)
+    if chat.title == 'New Chat':
+        autogen_chat_title(db, chat.id, chat.messages + [new_message], model)
 
 @app.post('/chat/{chat_id}/stream/', response_model=dict)
 async def send_message_stream(chat_id: UUID4, message = Depends(save_images), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user), db_chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
@@ -326,9 +353,9 @@ async def send_message_stream(chat_id: UUID4, message = Depends(save_images), db
     loading_msg_db = data.crud.create_message(db=db, message=loading_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
     
     try:
-        stream = model.chat_stream(cast(list, chat.messages) + [message])
+        stream = model.chat_stream(chat.messages + [message])
         
-        return StreamingResponse(handle_stream(cast(UUID4, loading_msg_db.id), db, model.api_name, stream))
+        return StreamingResponse(handle_stream(cast(UUID4, loading_msg_db.id), db, model.api_name, stream, chat, model))
     except Exception as e:
         # if an error occurs, delete the loading message and the message that was sent to the model
         data.crud.delete_message(db=db, message_id=cast(UUID4, loading_msg_db.id))

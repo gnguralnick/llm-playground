@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Iterable, cast
+from typing import Iterable, Sequence, cast
 from chat_models.chat_model import ImageStreamingChatModel
 from openai import OpenAI
 import openai.types.chat as chat_types
@@ -7,7 +7,7 @@ from util import ModelAPI, ModelConfig, RangedFloat, RangedInt, MessageContentTy
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from schemas import MessageCreate as Message
+    from schemas import MessageBase as Message
 
 class OpenAIConfig(ModelConfig):
     frequency_penalty: RangedFloat = RangedFloat(min=-2, max=2, val=0)
@@ -43,9 +43,9 @@ class OpenAIModel(ImageStreamingChatModel):
             raise ValueError('API key is required')
         self._client = OpenAI(api_key=api_key)
         
-    def process_messages(self, messages: list['Message']) -> Iterable[chat_types.ChatCompletionMessageParam]:
+    def process_messages(self, messages: Sequence['Message']) -> Iterable[chat_types.ChatCompletionMessageParam]:
         """
-        Convert a list of messages to the format expected by the OpenAI API.
+        Convert a sequence of messages to the format expected by the OpenAI API.
         """
         res = []
         for m in messages:
@@ -70,7 +70,7 @@ class OpenAIModel(ImageStreamingChatModel):
             res.append(msg)
         return res
         
-    def chat(self, messages: list['Message']) -> 'Message':
+    def chat(self, messages: Sequence['Message']) -> 'Message':
         completion = self._client.chat.completions.create(
             model=self.api_name,
             messages=self.process_messages(messages),
@@ -83,7 +83,7 @@ class OpenAIModel(ImageStreamingChatModel):
         from schemas import MessageBuilder
         return MessageBuilder(role=Role.ASSISTANT, model=self.api_name, config=self.config).add_text(completion.choices[0].message.content).build()
     
-    def chat_stream(self, messages: list['Message']) -> Generator[str, None, None]:
+    def chat_stream(self, messages: Sequence['Message']) -> Generator[str, None, None]:
         stream = self._client.chat.completions.create(
             model=self.api_name,
             messages=self.process_messages(messages),

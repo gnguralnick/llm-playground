@@ -33,9 +33,6 @@ class MessageContentBase(BaseModel):
         if values['type'] == MessageContentType.IMAGE and value is None:
             raise ValueError('Image type is required for image content')
         return value
-    
-class MessageContentCreate(MessageContentBase):
-    pass
 
 class MessageContent(MessageContentBase):
     """
@@ -55,9 +52,6 @@ class MessageBase(BaseModel):
     
     class Config:
         use_enum_values = True
-    
-class MessageCreate(MessageBase):
-    contents: list[MessageContentCreate]
 
 class Message(MessageBase):
     id: UUID4
@@ -94,14 +88,14 @@ class MessageBuilder:
         self.contents = []
         
     def add_text(self, content: str):
-        self.contents.append(MessageContentCreate(type=MessageContentType.TEXT, content=content))
+        self.contents.append(MessageContentBase(type=MessageContentType.TEXT, content=content))
         return self
     
     def add_image(self, content: str, image_type: str):
-        self.contents.append(MessageContentCreate(type=MessageContentType.IMAGE, content=content, image_type=image_type))
+        self.contents.append(MessageContentBase(type=MessageContentType.IMAGE, content=content, image_type=image_type))
         return self
     
     def build(self):
         if len(self.contents) == 0:
             raise ValueError('No content')
-        return MessageCreate(role=self.role, contents=self.contents, model=self.model, config=self.config)
+        return MessageBase(role=self.role, contents=self.contents, model=self.model, config=self.config)

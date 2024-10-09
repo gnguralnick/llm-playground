@@ -6,7 +6,7 @@ from util import MessageContentType, ModelAPI, Role, ModelConfig, RangedFloat, R
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from schemas import MessageCreate as Message
+    from schemas import MessageBase as Message
 
 class AnthropicConfig(ModelConfig):
     max_tokens: RangedInt = RangedInt(min=1, max=None, val=1024)
@@ -58,12 +58,13 @@ class AnthropicModel(StreamingChatModel):
                 res.append(msg)
         return res
         
-    def chat(self, messages: list['Message']) -> 'Message':
-        system_msg = [m for m in messages if m.role == Role.SYSTEM][0]
+    def chat(self, messages: Sequence['Message']) -> 'Message':
+        system_msg = [m for m in messages if m.role == Role.SYSTEM]
+        system_msg = system_msg[0] if system_msg else None
         response = self._client.messages.create(
             model=self.api_name,
             messages=self.process_messages(messages),
-            system=system_msg.contents[0].content,
+            system=system_msg.contents[0].content if system_msg is not None else anthropic.NOT_GIVEN,
             **self.config.dump_values()
         )
         
@@ -74,12 +75,13 @@ class AnthropicModel(StreamingChatModel):
         from schemas import MessageBuilder
         return MessageBuilder(role=Role.ASSISTANT, model=self.api_name, config=self.config).add_text(response.content[0].text).build()
     
-    def chat_stream(self, messages: list['Message']) -> Generator[str, None, None]:
-        system_msg = [m for m in messages if m.role == Role.SYSTEM][0]
+    def chat_stream(self, messages: Sequence['Message']) -> Generator[str, None, None]:
+        system_msg = [m for m in messages if m.role == Role.SYSTEM]
+        system_msg = system_msg[0] if system_msg else None
         with self._client.messages.stream(
             model=self.api_name,
             messages=self.process_messages(messages),
-            system=system_msg.contents[0].content,
+            system=system_msg.contents[0].content if system_msg is not None else anthropic.NOT_GIVEN,
             **self.config.dump_values()
         ) as stream:
             for text in stream.text_stream:

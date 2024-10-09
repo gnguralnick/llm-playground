@@ -1,8 +1,15 @@
 import styles from './App.module.scss';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import UserProvider from './context/userContextProvider';
+import { useEffect } from 'react';
 
 function App() {
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    navigate('/chat');
+  }, [navigate]);
   
   return (
     <UserProvider>
