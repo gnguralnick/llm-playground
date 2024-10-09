@@ -9,7 +9,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { useEditChat, useGetChat, useGetModels, useSendMessage, useSendMessageStream } from '../../hooks';
+import { backendFetch, useEditChat, useGetChat, useGetModels, useSendMessage, useSendMessageStream, useUser } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
 import { Chat as ChatType, MessageView } from '../../types';
 import { useQueryClient } from 'react-query';
@@ -42,9 +42,11 @@ function ChatLoading() {
 }
 
 export default function Chat() {
+    const {token} = useUser();
     const [input, setInput] = useState('');
     const [showSystem, setShowSystem] = useState(false);
     const [editing, setEditing] = useState<ChatType | null>(null);
+    const [images, setImages] = useState<Record<string, string>>({});
     const scrollToMessage = useCallback((node: HTMLDivElement) => {
         if (node !== null) {
             node.scrollIntoView({behavior: 'smooth', block: 'end', inline: 'nearest'});
@@ -81,6 +83,25 @@ export default function Chat() {
             }
         }
     }, [models, navigate]);
+
+    useEffect(() => {
+        async function fetchImages() {
+            if (chat?.messages) {
+                for (const message of chat.messages) {
+                    const imageContents = message.contents.filter(c => c.type === 'image');
+                    const newImages = await imageContents.reduce(async (acc, content) => {
+                        const response = await backendFetch('/' + content.content, undefined, token);
+                        console.log(response);
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        return {...(await acc), [content.content]: url};
+                    }, Promise.resolve({}) as Promise<Record<string, string>>);
+                    setImages(i => ({...i, ...newImages}));
+                }
+            }
+        }
+        void fetchImages();
+    }, [chat, token]);
 
     const {sendMessage: sendMessageStream, response: messageResponse, loading: messageStreamLoading, sentMessage} = useSendMessageStream(chatId!);
     const sendMessageMutation = useSendMessage(chatId!);
@@ -148,29 +169,33 @@ export default function Chat() {
                 <div className={cx(styles.content)}>
                     {message.role === 'assistant' && <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>}
                     <div className={cx(styles.message)}>
-                        <Markdown
-                            children={message.contents[0].content.replace('\\\\(', '$').replace('\\\\)', '$').replace('\\\\[', '$$').replace('\\\\]', '$$')}
-                            remarkPlugins={[remarkGfm, remarkMath]}
-                            rehypePlugins={[rehypeKatex]}
-                            className={styles.markdown}
-                            components={{
-                            code(props) {
-                                const {children, className, ...rest} = props
-                                const match = /language-(\w+)/.exec(className ?? '')
-                                return match ? (
-                                <SyntaxHighlighter
-                                    PreTag="div"
-                                    children={String(children).replace(/\n$/, '')}
-                                    language={match[1]}
-                                    style={materialDark}
-                                />
-                                ) : (
-                                <code {...rest} className={className}>
-                                    {children}
-                                </code>
-                                )
-                            }
-                            }}/>
+                        {message.contents.map((content, index) => content.type === 'text'
+                            ? <Markdown
+                                children={content.content.replace('\\\\(', '$').replace('\\\\)', '$').replace('\\\\[', '$$').replace('\\\\]', '$$')}
+                                remarkPlugins={[remarkGfm, remarkMath]}
+                                rehypePlugins={[rehypeKatex]}
+                                className={styles.markdown}
+                                key={index}
+                                components={{
+                                code(props) {
+                                    const {children, className, ...rest} = props
+                                    const match = /language-(\w+)/.exec(className ?? '')
+                                    return match ? (
+                                    <SyntaxHighlighter
+                                        PreTag="div"
+                                        children={String(children).replace(/\n$/, '')}
+                                        language={match[1]}
+                                        style={materialDark}
+                                    />
+                                    ) : (
+                                    <code {...rest} className={className}>
+                                        {children}
+                                    </code>
+                                    )
+                                }
+                                }}/>
+                            : <img key={index} src={images[content.content]} alt='Image' style={{maxWidth: '100%', maxHeight: '100%'}}/>
+                        )}
                     </div>
                 </div>
                 
@@ -212,7 +237,6 @@ export default function Chat() {
     }
 
     const messages = chat.messages ?? [];
-    console.log(messages);
 
     if (editing) {
         return <div className={styles.chatContainer}>
