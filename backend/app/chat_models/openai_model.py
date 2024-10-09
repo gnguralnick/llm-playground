@@ -1,9 +1,13 @@
 from collections.abc import Generator
 from typing import Iterable, cast
-from chat_models.chat_model import ImageMessageContent, ImageStreamingChatModel, Message, AssistantMessage, TextMessageContent
+from chat_models.chat_model import ImageStreamingChatModel
 from openai import OpenAI
 import openai.types.chat as chat_types
-from util import ModelAPI, ModelConfig, RangedFloat, RangedInt, MessageContentType, OptionedString
+from util import ModelAPI, ModelConfig, RangedFloat, RangedInt, MessageContentType, OptionedString, Role
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from schemas import MessageCreate as Message
 
 class OpenAIConfig(ModelConfig):
     frequency_penalty: RangedFloat = RangedFloat(min=-2, max=2, val=0)
@@ -24,7 +28,6 @@ class OpenAIConfig(ModelConfig):
             'top_p': self.top_p.val
         }
     
-    
 class OpenAIModel(ImageStreamingChatModel):
 
     api_name: str
@@ -40,7 +43,7 @@ class OpenAIModel(ImageStreamingChatModel):
             raise ValueError('API key is required')
         self._client = OpenAI(api_key=api_key)
         
-    def process_messages(self, messages: list[Message]) -> Iterable[chat_types.ChatCompletionMessageParam]:
+    def process_messages(self, messages: list['Message']) -> Iterable[chat_types.ChatCompletionMessageParam]:
         res = []
         for m in messages:
             msg = {
@@ -53,7 +56,6 @@ class OpenAIModel(ImageStreamingChatModel):
                     content['type'] = 'text'
                     content['text'] = c.content
                 elif c.type == MessageContentType.IMAGE:
-                    c = ImageMessageContent(image_type=c.image_type, content=c.content)
                     content['type'] = 'image_url'
                     content['image_url'] = {
                         'url': f"data:image/{c.image_type};base64,{c.get_image()}",
@@ -65,7 +67,7 @@ class OpenAIModel(ImageStreamingChatModel):
             res.append(msg)
         return res
         
-    def chat(self, messages: list[Message]) -> AssistantMessage:
+    def chat(self, messages: list['Message']) -> 'Message':
         completion = self._client.chat.completions.create(
             model=self.api_name,
             messages=self.process_messages(messages),
@@ -75,9 +77,10 @@ class OpenAIModel(ImageStreamingChatModel):
         if completion.choices[0].message.content is None:
             raise ValueError('No completion content')
         
-        return AssistantMessage(contents=completion.choices[0].message.content, model=self.api_name)
+        from schemas import MessageBuilder
+        return MessageBuilder(role=Role.ASSISTANT, model=self.api_name, config=self.config).add_text(completion.choices[0].message.content).build()
     
-    def chat_stream(self, messages: list[Message]) -> Generator[str, None, None]:
+    def chat_stream(self, messages: list['Message']) -> Generator[str, None, None]:
         stream = self._client.chat.completions.create(
             model=self.api_name,
             messages=self.process_messages(messages),

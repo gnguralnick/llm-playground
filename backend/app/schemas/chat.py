@@ -1,13 +1,13 @@
 from pydantic import BaseModel, UUID4
 import datetime
 from .message import MessageView
+from util import ModelConfig
 from chat_models import model_config_type
-from chat_models.openai_model import OpenAIConfig
 
 class ChatBase(BaseModel):
     title: str
     default_model: str = 'gpt-4o-mini'
-    config: model_config_type = OpenAIConfig()
+    config: model_config_type = ModelConfig()
     
 class ChatCreate(ChatBase):
     system_prompt: str = """You are a helpful assistant. Format responses using Markdown. 

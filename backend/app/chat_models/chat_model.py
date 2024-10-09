@@ -1,44 +1,11 @@
 from abc import ABC, abstractmethod
-from pydantic import BaseModel
 from collections.abc import Generator
-from util import Role, ModelAPI, ModelConfig, MessageContentType
-import base64
+from util import ModelAPI, ModelConfig
 
-class MessageContent(BaseModel):
-    type: MessageContentType
-    content: str
-    
-class TextMessageContent(MessageContent):
-    type: MessageContentType = MessageContentType.TEXT
-    
-class ImageMessageContent(MessageContent):
-    type: MessageContentType = MessageContentType.IMAGE
-    image_type: str
-    
-    def get_image(self):
-        
-        # treat content as a local file path and return base64 encoded image
-        with open(self.content, 'rb') as f:
-            encoding = base64.b64encode(f.read()).decode('utf-8')
-            
-        return encoding
-            
-class Message(BaseModel):
-    role: Role
-    contents: list[TextMessageContent | ImageMessageContent]
-    
-class TextMessage(Message):
-    contents: list[TextMessageContent]
-    
-class HumanMessage(Message):
-    role: Role = Role.USER
-    
-class AssistantMessage(Message):
-    role: Role = Role.ASSISTANT
-    model: str
-    
-class SystemMessage(Message):
-    role: Role = Role.SYSTEM
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from schemas import MessageCreate as Message
 
 class ChatModel(ABC):
     """An abstract class for chat models. It defines the basic methods that all chat models should implement.
@@ -65,7 +32,7 @@ class ChatModel(ABC):
             self.config = config
 
     @abstractmethod
-    def chat(self, messages: list[TextMessage]) -> AssistantMessage:
+    def chat(self, messages: list['Message']) -> 'Message':
         """Send a list of messages to the model and return the response.
 
         Args:
@@ -90,7 +57,7 @@ class ChatModel(ABC):
 class StreamingChatModel(ChatModel):
     
     @abstractmethod
-    def chat_stream(self, messages: list[TextMessage]) -> Generator[str, None]:
+    def chat_stream(self, messages: list['Message']) -> Generator[str, None]:
         """Send a list of messages to the model and stream the response.
 
         Args:
@@ -110,7 +77,7 @@ class StreamingChatModel(ChatModel):
 class ImageChatModel(ChatModel):
     
     @abstractmethod
-    def chat(self, messages: list[Message]) -> AssistantMessage:
+    def chat(self, messages: list['Message']) -> 'Message':
         pass
     
     @classmethod
@@ -120,7 +87,4 @@ class ImageChatModel(ChatModel):
         return info
     
 class ImageStreamingChatModel(StreamingChatModel, ImageChatModel):
-    
-    @abstractmethod
-    def chat_stream(self, messages: list[Message]) -> Generator[str, None]:
-        pass
+    pass

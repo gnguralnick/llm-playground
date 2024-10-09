@@ -1,8 +1,12 @@
 from collections.abc import Generator
 from typing import Iterable, Sequence
 import anthropic
-from chat_models.chat_model import StreamingChatModel, Message, AssistantMessage, TextMessage
+from chat_models.chat_model import StreamingChatModel
 from util import MessageContentType, ModelAPI, Role, ModelConfig, RangedFloat, RangedInt
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from schemas import MessageCreate as Message
 
 class AnthropicConfig(ModelConfig):
     max_tokens: RangedInt = RangedInt(min=1, max=None, val=1024)
@@ -32,7 +36,7 @@ class AnthropicModel(StreamingChatModel):
             raise ValueError('API key is required')
         self._client = anthropic.Anthropic(api_key=api_key)
         
-    def process_messages(self, messages: Sequence[Message]) -> Iterable[anthropic.types.MessageParam]:
+    def process_messages(self, messages: Sequence['Message']) -> Iterable[anthropic.types.MessageParam]:
         res: list[anthropic.types.MessageParam] = []
         for m in messages:
             if m.role != Role.SYSTEM:
@@ -50,7 +54,7 @@ class AnthropicModel(StreamingChatModel):
                     msg['content'].append(content)
         return res
         
-    def chat(self, messages: list[TextMessage]) -> AssistantMessage:
+    def chat(self, messages: list['Message']) -> 'Message':
         system_msg = [m for m in messages if m.role == Role.SYSTEM][0]
         response = self._client.messages.create(
             model=self.api_name,
@@ -63,9 +67,10 @@ class AnthropicModel(StreamingChatModel):
             print(response.error)
             raise ValueError(response.error.type + ': ' + response.error.message)
         
-        return AssistantMessage(contents=response.content[0].text, model=self.api_name)
+        from schemas import MessageBuilder
+        return MessageBuilder(role=Role.ASSISTANT, model=self.api_name, config=self.config).add_text(response.content[0].text).build()
     
-    def chat_stream(self, messages: list[TextMessage]) -> Generator[str, None, None]:
+    def chat_stream(self, messages: list['Message']) -> Generator[str, None, None]:
         system_msg = [m for m in messages if m.role == Role.SYSTEM][0]
         with self._client.messages.stream(
             model=self.api_name,

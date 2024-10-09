@@ -1,5 +1,5 @@
 from pydantic import BaseModel, UUID4
-from data.schemas import Chat, ModelAPIKeyBase
+from schemas import Chat, ModelAPIKeyBase
 
 class UserBase(BaseModel):
     email: str

@@ -1,7 +1,9 @@
-from pydantic import BaseModel, UUID4
+from pydantic import BaseModel, UUID4, field_validator
 from util import Role, MessageContentType
-from chat_models import model_config_type
+import typing
 import datetime
+import base64
+from chat_models import model_config_type
 
 class MessageContentBase(BaseModel):
     type: MessageContentType
@@ -10,6 +12,23 @@ class MessageContentBase(BaseModel):
     
     class Config:
         use_enum_values = True
+        
+    def get_image(self):
+        if self.type != MessageContentType.IMAGE:
+            raise ValueError('Content is not an image')
+        
+        # treat content as a local file path and return base64 encoded image
+        with open(self.content, 'rb') as f:
+            encoding = base64.b64encode(f.read()).decode('utf-8')
+            
+        return encoding
+    
+    @classmethod
+    @field_validator('image_type')
+    def validate_image_type(cls, value, values):
+        if values['type'] == MessageContentType.IMAGE and value is None:
+            raise ValueError('Image type is required for image content')
+        return value
     
 class MessageContentCreate(MessageContentBase):
     pass
