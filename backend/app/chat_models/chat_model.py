@@ -18,10 +18,19 @@ class ChatModel(ABC):
     api_name: str
     api_provider: ModelAPI
     requires_key: bool = False
-    config: ModelConfig
-    config_type: type[ModelConfig]
+    config: ModelConfig # to be overridden by subclasses
+    config_type: type[ModelConfig] # to be overridden by subclasses
     
     def __init__(self, api_key: str | None = None, config: ModelConfig | dict | None = None, **kwargs) -> None:
+        """Construct an instance of ChatModel.
+
+        Args:
+            api_key (str | None, optional): The API Key needed to interact with the chat model. Defaults to None.
+            config (ModelConfig | dict | None, optional): The configuration used to initialize the chat model. Defaults to None (model default config).
+
+        Raises:
+            ValueError: If the provided config is not valid for the model type. Each subclass should define its own config type.
+        """
         super().__init__(**kwargs)
         self._api_key = api_key
         if config is not None:
@@ -55,6 +64,9 @@ class ChatModel(ABC):
         return ModelInfo(**attrs)
 
 class StreamingChatModel(ChatModel):
+    """
+    A chat model that supports streaming.
+    """
     
     @abstractmethod
     def chat_stream(self, messages: list['Message']) -> Generator[str, None]:
@@ -75,6 +87,9 @@ class StreamingChatModel(ChatModel):
         return info
     
 class ImageChatModel(ChatModel):
+    """
+    A chat model that supports images.
+    """
     
     @abstractmethod
     def chat(self, messages: list['Message']) -> 'Message':
@@ -87,4 +102,7 @@ class ImageChatModel(ChatModel):
         return info
     
 class ImageStreamingChatModel(StreamingChatModel, ImageChatModel):
+    """
+    A chat model that supports both streaming and images.
+    """
     pass

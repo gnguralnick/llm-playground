@@ -37,6 +37,9 @@ class AnthropicModel(StreamingChatModel):
         self._client = anthropic.Anthropic(api_key=api_key)
         
     def process_messages(self, messages: Sequence['Message']) -> Iterable[anthropic.types.MessageParam]:
+        """
+        Convert a list of messages to the format expected by the Anthropic API.
+        """
         res = []
         for m in messages:
             if m.role != Role.SYSTEM:

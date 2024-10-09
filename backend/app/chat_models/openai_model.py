@@ -44,6 +44,9 @@ class OpenAIModel(ImageStreamingChatModel):
         self._client = OpenAI(api_key=api_key)
         
     def process_messages(self, messages: list['Message']) -> Iterable[chat_types.ChatCompletionMessageParam]:
+        """
+        Convert a list of messages to the format expected by the OpenAI API.
+        """
         res = []
         for m in messages:
             msg = {

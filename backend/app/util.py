@@ -2,6 +2,9 @@ from enum import Enum
 from pydantic import BaseModel, field_validator, ValidationInfo
 
 class Role(str, Enum):
+    """Role of the message sender
+    Can be 'user', 'assistant', or 'system'
+    """
     USER = 'user'
     ASSISTANT = 'assistant'
     SYSTEM = 'system'
@@ -18,6 +21,9 @@ class ConfigItem(BaseModel):
     type: str
     
 class RangedFloat(ConfigItem):
+    """
+    A float value with optional min and max constraints
+    """
     type: str = 'float'
     min: float | None
     max: float | None
@@ -31,6 +37,9 @@ class RangedFloat(ConfigItem):
         return value
     
 class RangedInt(ConfigItem):
+    """
+    An integer value with optional min and max constraints
+    """
     type: str = 'int'
     min: int | None
     max: int | None
@@ -44,6 +53,9 @@ class RangedInt(ConfigItem):
         return value
     
 class OptionedString(ConfigItem):
+    """
+    A string value that must be one of a set of options
+    """
     type: str = 'string'
     options: list[str]
     val: str

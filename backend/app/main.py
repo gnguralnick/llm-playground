@@ -58,12 +58,32 @@ def get_db():
         
 @app.post('/users/', response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: data.Session = Depends(get_db)):
+    """Create a new user
+
+    Args:
+        user (schemas.UserCreate): The user to create
+
+    Raises:
+        HTTPException: If the email is already registered
+
+    Returns:
+        schemas.User: The newly created user
+    """
     db_user = data.crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail='Email already registered')
     return data.crud.create_user(db=db, user=user)
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    """Create a JWT access token
+
+    Args:
+        data (dict): The data to encode in the token
+        expires_delta (timedelta | None, optional): The expiration time for the token. Defaults to None.
+
+    Returns:
+        str: The encoded JWT access token
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -76,6 +96,17 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: data.Session = Depends(get_db)) -> schemas.User:
+    """Get the current user from the JWT token
+
+    Args:
+        token (str, optional): The JWT token. Defaults to Depends(oauth2_scheme).
+
+    Raises:
+        credentials_exception: If the token is invalid or the user does not exist
+
+    Returns:
+        schemas.User: The user associated with the token
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -179,8 +210,10 @@ def get_message(message: str = Form()) -> schemas.MessageCreate:
 
 async def get_model(message: schemas.MessageCreate = Depends(get_message), chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
     if message.model is not None:
+        # user can select a model for a single message
         model_type = get_chat_model(message.model)
     else:
+        # otherwise use the default model for the chat
         model_type = get_chat_model(cast(str, chat.default_model))
     key = None
     if model_type.requires_key:
@@ -192,11 +225,24 @@ async def get_model(message: schemas.MessageCreate = Depends(get_message), chat:
         config = message.config
     else:
         config = cast(dict, chat.config)
-    model = model_type(api_key=cast(str, key), config=config)
+    model = model_type(api_key=cast(str, key), config=config) # construct model instance, using API key if required
     message.model = None # user messages should not have a model; this was just for the model selection
     return model, config
 
 def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: schemas.MessageCreate = Depends(get_message)) -> schemas.MessageCreate:
+    """Save image files to disk and update message content to include file paths
+
+    Args:
+        chat_id (UUID4): The chat ID to which the message belongs / will belong
+        files (list[UploadFile] | None, optional): The list of files uploaded with the message. Defaults to None, in which case the function should have no effect.
+        message (schemas.MessageCreate, optional): The message to process. Defaults to Depends(get_message).
+
+    Raises:
+        HTTPException: If the message contains an image content but no file is provided whose filename matches the content
+
+    Returns:
+        schemas.MessageCreate: The message with updated content, where image content is replaced with local file paths
+    """
     for c in message.contents:
         if c.type == schemas.MessageContentType.IMAGE:
             if files is None:
@@ -231,6 +277,20 @@ def send_message(chat_id: UUID4, message = Depends(save_images), db: data.Sessio
         raise HTTPException(status_code=400, detail=str(e))
         
 def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Generator[str, None, None]):
+    """Process a stream of tokens from a chat model and update the message in the database when the stream ends
+
+    Args:
+        msg_id (uuid.UUID): The ID of the message to update - a loading message that will be replaced with the final model response
+        db (data.Session): The database session
+        model (str): The name of the model
+        stream (Generator[str, None, None]): The stream of tokens from the model
+
+    Raises:
+        HTTPException: If the assistant user is not initialized
+
+    Yields:
+        str: The tokens from the stream
+    """
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
 
@@ -261,6 +321,7 @@ async def send_message_stream(chat_id: UUID4, message = Depends(save_images), db
     
     db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     
+    # create a temporary loading message to show the user that the model is processing
     loading_msg = schemas.MessageBuilder(role=schemas.Role.ASSISTANT, model=model.api_name, config=config).add_text('LOADING').build()
     loading_msg_db = data.crud.create_message(db=db, message=loading_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
     
@@ -269,6 +330,7 @@ async def send_message_stream(chat_id: UUID4, message = Depends(save_images), db
         
         return StreamingResponse(handle_stream(cast(UUID4, loading_msg_db.id), db, model.api_name, stream))
     except Exception as e:
+        # if an error occurs, delete the loading message and the message that was sent to the model
         data.crud.delete_message(db=db, message_id=cast(UUID4, loading_msg_db.id))
         data.crud.delete_message(db=db, message_id=cast(UUID4, db_msg.id))
         raise HTTPException(status_code=400, detail=str(e))
