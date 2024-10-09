@@ -27,6 +27,7 @@ export interface TextMessageContent extends MessageContent {
 export interface ImageMessageContent extends MessageContent {
     type: 'image';
     image_type: string;
+    image?: File;
 }
 
 export interface Message {

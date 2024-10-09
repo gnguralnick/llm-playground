@@ -37,7 +37,7 @@ class AnthropicModel(StreamingChatModel):
         self._client = anthropic.Anthropic(api_key=api_key)
         
     def process_messages(self, messages: Sequence['Message']) -> Iterable[anthropic.types.MessageParam]:
-        res: list[anthropic.types.MessageParam] = []
+        res = []
         for m in messages:
             if m.role != Role.SYSTEM:
                 msg = {
@@ -52,6 +52,7 @@ class AnthropicModel(StreamingChatModel):
                     else:
                         raise ValueError('Unsupported message type')
                     msg['content'].append(content)
+                res.append(msg)
         return res
         
     def chat(self, messages: list['Message']) -> 'Message':

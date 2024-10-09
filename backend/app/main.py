@@ -215,7 +215,9 @@ def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: 
     return message
 
 @app.post('/chat/{chat_id}/', response_model=schemas.MessageView)
-def send_message(chat_id: UUID4, message = Depends(save_images), db: data.Session = Depends(get_db), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
+def send_message(chat_id: UUID4, message = Depends(save_images), db: data.Session = Depends(get_db), db_chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
+    chat: schemas.chat.Chat = schemas.chat.Chat.model_validate(db_chat, from_attributes=True)
+    
     model, config = model_with_config
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
@@ -247,7 +249,9 @@ def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Gener
     data.crud.update_message(db=db, message_id=msg_id, message=new_message)
 
 @app.post('/chat/{chat_id}/stream/', response_model=dict)
-async def send_message_stream(chat_id: UUID4, message = Depends(save_images), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
+async def send_message_stream(chat_id: UUID4, message = Depends(save_images), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user), db_chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
+    chat: schemas.chat.Chat = schemas.chat.Chat.model_validate(db_chat, from_attributes=True)
+    
     model, config = model_with_config
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')

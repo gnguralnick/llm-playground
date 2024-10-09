@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './chat.module.scss';
 import clsx from 'clsx';
 import { ArrowUp } from '../assets/icons';
@@ -11,9 +11,10 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { backendFetch, useEditChat, useGetChat, useGetModels, useSendMessage, useSendMessageStream, useUser } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
-import { Chat as ChatType, MessageView } from '../../types';
+import { Chat as ChatType, ImageMessageContent, MessageView, TextMessageContent } from '../../types';
 import { useQueryClient } from 'react-query';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
+import { faImage } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const cx = clsx.bind(styles);
@@ -44,6 +45,8 @@ function ChatLoading() {
 export default function Chat() {
     const {token} = useUser();
     const [input, setInput] = useState('');
+    const [imageInput, setImageInput] = useState<File | null>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
     const [showSystem, setShowSystem] = useState(false);
     const [editing, setEditing] = useState<ChatType | null>(null);
     const [images, setImages] = useState<Record<string, string>>({});
@@ -91,7 +94,6 @@ export default function Chat() {
                     const imageContents = message.contents.filter(c => c.type === 'image');
                     const newImages = await imageContents.reduce(async (acc, content) => {
                         const response = await backendFetch('/' + content.content, undefined, token);
-                        console.log(response);
                         const blob = await response.blob();
                         const url = URL.createObjectURL(blob);
                         return {...(await acc), [content.content]: url};
@@ -118,19 +120,24 @@ export default function Chat() {
             }
             const msg = input.trim();
             setInput('');
-            // await sendMessageMutation.mutateAsync({
-            //     role: 'user',
-            //     content: msg
-            // });
             const model = models.find(m => m.api_name === editedChat.default_model);
             if (!model) {
                 console.error('Model not found');
                 return;
             }
+
+            const contents: (TextMessageContent | ImageMessageContent)[] = [];
+            if (imageInput) {
+                contents.push({type: 'image', content: imageInput.name, image: imageInput, image_type: imageInput.type});
+                setImageInput(null);
+            }
+            contents.push({type: 'text', content: msg});
+
+
             if (model.supports_streaming) {
-                await sendMessageStream({role: 'user', contents: [{type: 'text', content: msg}]});
+                await sendMessageStream({role: 'user', contents: contents});
             } else {
-                sendMessageMutation.mutate({role: 'user', contents: [{type: 'text', content: msg}]});
+                sendMessageMutation.mutate({role: 'user', contents: contents});
             }
             void queryClient.invalidateQueries(chatId);
             setInput('');
@@ -194,7 +201,7 @@ export default function Chat() {
                                     )
                                 }
                                 }}/>
-                            : <img key={index} src={images[content.content]} alt='Image' style={{maxWidth: '100%', maxHeight: '100%'}}/>
+                            : <img key={index} src={(content.image ? URL.createObjectURL(content.image) : undefined) ?? images[content.content]} alt='Image' style={{maxWidth: '100%', maxHeight: '100%'}}/>
                         )}
                     </div>
                 </div>
@@ -214,17 +221,40 @@ export default function Chat() {
     }
 
     const renderInput = () => {
-        return <div className={styles.inputContainer}>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className={styles.input}
-            placeholder="Type a message..."
-          />
-          <button onClick={() => void handleSend()} className={styles.button}>
-            <ArrowUp />
-          </button>
+        const model = models?.find(m => m.api_name === (editing ?? chat)?.default_model);
+        return <div className={styles.inputContainerCtr}>
+            <div className={styles.uploads}>
+                {imageInput && <div className={styles.upload}>
+                    <img src={URL.createObjectURL(imageInput)} alt='Image' style={{maxWidth: '10%', maxHeight: '10%'}}/>
+                    <button onClick={() => setImageInput(null)}>X</button>
+                </div>}
+            </div>
+            <div className={styles.inputContainer}>
+                {model && model.supports_images && <label htmlFor='imageInput' className={styles.imageInputLabel} onClick={() => imageInputRef.current?.click()}>
+                    <FontAwesomeIcon icon={faImage} />
+                    <input
+                        type='file'
+                        accept='image/*'
+                        className={styles.imageInput}
+                        ref={imageInputRef}
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setImageInput(file);
+                        }}
+                    />
+                </label>}
+                <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className={styles.input}
+                    placeholder="Type a message..."
+                />
+                <button onClick={() => void handleSend()} className={styles.button}>
+                    <ArrowUp />
+                </button>
+            </div>
         </div>;
     }
 

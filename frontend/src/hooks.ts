@@ -69,17 +69,36 @@ export function useGetChats(userId: string) {
     });
 }
 
+function createMessageFormData(msg: MessageView): FormData {
+    const formData = new FormData();
+    const messageObj = {
+        role: msg.role,
+        contents: msg.contents.map(content => ({
+            type: content.type,
+            content: content.content
+        }))
+    }
+    formData.append('message', JSON.stringify(messageObj));
+    msg.contents.filter(content => content.type === 'image').forEach(content => {
+        if (content.image) {
+            formData.append('files', content.image);
+        }
+    });
+    return formData;
+}
+
 export function useSendMessage(chatId: string) {
     const queryClient = useQueryClient();
     const { token } = useUser();
     return useMutation({
         mutationFn: async (msg: MessageView) => {
+            const formData = createMessageFormData(msg);
             const response = await backendFetch(`/chat/${chatId}/`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'multipart/form-data'
                 },
-                body: JSON.stringify(msg)
+                body: formData
             }, token);
             const json: unknown = await response.json();
             return json as Message;
@@ -101,12 +120,10 @@ export function useSendMessageStream(chatId: string) {
         setLoading(true);
         setSentMessage(msg);
         setResponse({role: 'assistant', contents: [{ type: 'text', content: ''}]});
+        const formData = createMessageFormData(msg);
         const response = await backendFetch(`/chat/${chatId}/stream/`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(msg)
+            body: formData
         }, token);
         const reader = response.body?.getReader();
         if (!reader) {
