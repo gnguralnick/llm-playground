@@ -26,5 +26,6 @@ dist-ssr
 backend/venv
 backend/**/__pycache__
 **/__pycache__/*
+backend/app/images
 
 **/.env

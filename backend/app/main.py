@@ -1,6 +1,6 @@
 from collections.abc import Generator
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, status
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, status, UploadFile, Form
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from config import config
 import data
@@ -13,7 +13,8 @@ from typing import cast
 
 from datetime import datetime, timedelta, timezone
 
-import chat_models
+import os
+
 from chat_models import get_chat_model, get_models, ModelInfo, ChatModel, StreamingChatModel, get_chat_model_info
 from util import ModelConfig, Role
 
@@ -159,6 +160,10 @@ async def get_chat(chat_id: UUID4, db: data.Session = Depends(get_db), current_u
 def read_chat(chat: data.models.Chat = Depends(get_chat)):
     return chat
 
+@app.get('/images/{chat_id}/{image_path}', response_class=FileResponse)
+def read_image(chat_id: UUID4, image_path: str, chat: data.models.Chat = Depends(get_chat)):
+    return f'images/{chat_id}/{image_path}'
+
 @app.put('/chat/{chat_id}', response_model=schemas.Chat)
 def update_chat(chat: schemas.ChatCreate, db_chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db)):
     return data.crud.update_chat(db=db, chat_id=cast(UUID4, db_chat.id), chat=chat)
@@ -169,7 +174,10 @@ def delete_chat(db: data.Session = Depends(get_db), current_user: schemas.User =
     db.commit()
     return {'message': 'Chat deleted', }
 
-async def get_model(message: schemas.MessageCreate, chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
+def get_message(message: str = Form()) -> schemas.MessageCreate:
+    return schemas.MessageCreate.model_validate_json(message)
+
+async def get_model(message: schemas.MessageCreate = Depends(get_message), chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
     if message.model is not None:
         model_type = get_chat_model(message.model)
     else:
@@ -188,15 +196,34 @@ async def get_model(message: schemas.MessageCreate, chat: data.models.Chat = Dep
     message.model = None # user messages should not have a model; this was just for the model selection
     return model, config
 
+def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: schemas.MessageCreate = Depends(get_message)) -> schemas.MessageCreate:
+    for c in message.contents:
+        if c.type == schemas.MessageContentType.IMAGE:
+            if files is None:
+                raise HTTPException(status_code=400, detail='Image content requires a file')
+            image = next((f for f in files if f.filename == c.content), None)
+            if image is None:
+                raise HTTPException(status_code=400, detail='Image content file not found')
+            image_data = image.file.read()
+            # save image to disk and set content to file path
+            if not os.path.exists(f'images/{chat_id}'):
+                os.makedirs(f'images/{chat_id}')
+            with open(f'images/{chat_id}/{c.content}', 'wb') as f:
+                f.write(image_data)
+            c.content = f'images/{chat_id}/{c.content}'
+            c.image_type = image.content_type
+    return message
+
 @app.post('/chat/{chat_id}/', response_model=schemas.MessageView)
-def send_message(chat_id: UUID4, message: schemas.MessageCreate, db: data.Session = Depends(get_db), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
+def send_message(chat_id: UUID4, message = Depends(save_images), db: data.Session = Depends(get_db), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
     model, config = model_with_config
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
+
     response_msg = model.chat(cast(list, chat.messages) + [message])
     db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     try:
-        return data.crud.create_message(db=db, message=schemas.MessageCreate(**response_msg.model_dump(), config=config), user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
+        return data.crud.create_message(db=db, message=response_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
     except Exception as e:
         data.crud.delete_message(db=db, message_id=cast(UUID4, db_msg.id))
         raise HTTPException(status_code=400, detail=str(e))
@@ -220,15 +247,13 @@ def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Gener
     data.crud.update_message(db=db, message_id=msg_id, message=new_message)
 
 @app.post('/chat/{chat_id}/stream/', response_model=dict)
-async def send_message_stream(chat_id: UUID4, message: schemas.MessageCreate, db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
+async def send_message_stream(chat_id: UUID4, message = Depends(save_images), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
     model, config = model_with_config
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
 
     if not isinstance(model, StreamingChatModel):
         raise HTTPException(status_code=400, detail='Model does not support streaming')
-    
-    #print(cast(list, chat.messages)[0].contents[0].content)
     
     db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     
