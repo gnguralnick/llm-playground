@@ -1,6 +1,6 @@
 import styles from './chatOptions.module.scss';
 
-import { Chat as ChatType, Model } from '../../types';
+import { Chat as ChatType, Model, OptionedString, RangedNumber } from '../../types';
 
 import Select from 'react-select';
 import { useEffect } from 'react';
@@ -40,7 +40,17 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
         const configItem = chat.config[key];
 
         if (!configItem) return null;
-        
+
+        if (configItem.type === 'string') {
+            return renderOptionedStringConfigItem(key, index, configItem);
+        } else if (configItem.type === 'int' || configItem.type === 'float') {
+            return renderNumberConfigItem(key, index, configItem);
+        } else {
+            return null;
+        }
+    };
+
+    const renderNumberConfigItem = (key: string, index: number, configItem: RangedNumber) => {
         if (configItem.max === null || configItem.min === null) {
             return <div key={index} className={styles.formItem}>
                 <label htmlFor={key}>{key.replace(/_/g, ' ')}</label>
@@ -75,6 +85,22 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
                 <span>{configItem.max}</span>
             </div>
 
+        </div>
+    }
+
+    const renderOptionedStringConfigItem = (key: string, index: number, configItem: OptionedString) => {
+        return <div key={index} className={styles.formItem}>
+            <label htmlFor={key}>{key.replace(/_/g, ' ')}</label>
+            <Select
+                id={key}
+                options={configItem.options.map(o => ({label: o, value: o}))}
+                className={styles.select}
+                classNames={{
+                    option: (state) => state.isSelected ? (styles.selected + ' ' + styles.option) : styles.option
+                }}
+                value={{label: configItem.val, value: configItem.val}}
+                onChange={(selected) => updateChat(c => ({...c, config: {...c.config, [key]: {...configItem, val: selected?.value ?? ''}}}))}
+            />
         </div>
     }
     

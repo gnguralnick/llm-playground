@@ -40,7 +40,7 @@ class MessageContent(Base):
     message_id = Column(UUID(as_uuid=True), ForeignKey('message.id'), nullable=False)
     order = Column(Integer, nullable=False)
     
-    message = relationship('Message', back_populates='content')
+    message = relationship('Message', back_populates='contents')
 
 class Message(Base):
     __tablename__ = 'message'
@@ -55,7 +55,7 @@ class Message(Base):
     
     user = relationship('User')
     chat = relationship('Chat', back_populates='messages')
-    content = relationship('MessageContent', back_populates='message', cascade='all, delete-orphan', order_by='MessageContent.order')
+    contents = relationship('MessageContent', back_populates='message', cascade='all, delete-orphan', order_by='MessageContent.order', lazy='joined')
     
 class APIKey(Base):
     __tablename__ = 'api_key'

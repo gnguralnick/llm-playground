@@ -217,13 +217,15 @@ def handle_stream(msg_id: uuid.UUID, db: data.Session, model: str, stream: Gener
     data.crud.update_message(db=db, message_id=msg_id, message=new_message)
 
 @app.post('/chat/{chat_id}/stream/', response_model=dict)
-async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreate, background_tasks: BackgroundTasks, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
+async def send_message_stream(chat_id: UUID4, message: data.schemas.MessageCreate, db: data.Session = Depends(get_db), current_user: data.schemas.User = Depends(get_current_user), chat: data.models.Chat = Depends(get_chat), model_with_config: tuple[ChatModel, ModelConfig] = Depends(get_model)):
     model, config = model_with_config
     if assistant_user is None:
         raise HTTPException(status_code=500, detail='Assistant user not found')
 
     if not isinstance(model, StreamingChatModel):
         raise HTTPException(status_code=400, detail='Model does not support streaming')
+    
+    #print(cast(list, chat.messages)[0].contents[0].content)
     
     db_msg = data.crud.create_message(db=db, message=message, user_id=uuid.UUID("c0aba09b-f57e-4998-bee6-86da8b796c5b"), chat_id=chat_id)
     

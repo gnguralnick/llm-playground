@@ -6,7 +6,6 @@ import base64
 
 class MessageContent(BaseModel):
     type: MessageContentType
-    order: int
     content: str
     
 class TextMessageContent(MessageContent):

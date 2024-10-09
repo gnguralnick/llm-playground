@@ -60,7 +60,7 @@ export default function Chat() {
     const navigate = useNavigate();
 
     const setEditingChat = (chat: ChatType) => {
-        setEditing({...chat, system_prompt: chat.messages?.find(m => m.role === 'system')?.content});
+        setEditing({...chat, system_prompt: chat.messages?.find(m => m.role === 'system')?.contents[0].content});
     }
 
     useEffect(() => {
@@ -107,9 +107,9 @@ export default function Chat() {
                 return;
             }
             if (model.supports_streaming) {
-                await sendMessageStream({role: 'user', content: msg});
+                await sendMessageStream({role: 'user', contents: [{type: 'text', content: msg}]});
             } else {
-                sendMessageMutation.mutate({role: 'user', content: msg});
+                sendMessageMutation.mutate({role: 'user', contents: [{type: 'text', content: msg}]});
             }
             void queryClient.invalidateQueries(chatId);
             setInput('');
@@ -129,7 +129,7 @@ export default function Chat() {
                 <button onClick={() => setShowSystem(!showSystem)} className={styles.systemButton}>
                     {showSystem ? 'Hide' : 'Show'} System Prompt
                 </button>
-                {showSystem && message.content}
+                {showSystem && message.contents[0].content}
             </div>;
         }
 
@@ -141,7 +141,7 @@ export default function Chat() {
                 
                 <div className={cx(styles.info)}>
                         {message.role === 'assistant' && message.model && message.model !== chat?.default_model && <span className={styles.model}>Generated with {models?.find(m => m.api_name === message.model)?.human_name}</span>}
-                        <button className={styles.copyButton} onClick={() => void navigator.clipboard.writeText(message.content)}>
+                        <button className={styles.copyButton} onClick={() => void navigator.clipboard.writeText(message.contents[0].content)}>
                             <FontAwesomeIcon icon={faCopy} />
                         </button>
                 </div>
@@ -149,7 +149,7 @@ export default function Chat() {
                     {message.role === 'assistant' && <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>}
                     <div className={cx(styles.message)}>
                         <Markdown
-                            children={message.content.replace('\\\\(', '$').replace('\\\\)', '$').replace('\\\\[', '$$').replace('\\\\]', '$$')}
+                            children={message.contents[0].content.replace('\\\\(', '$').replace('\\\\)', '$').replace('\\\\[', '$$').replace('\\\\]', '$$')}
                             remarkPlugins={[remarkGfm, remarkMath]}
                             rehypePlugins={[rehypeKatex]}
                             className={styles.markdown}
@@ -212,6 +212,7 @@ export default function Chat() {
     }
 
     const messages = chat.messages ?? [];
+    console.log(messages);
 
     if (editing) {
         return <div className={styles.chatContainer}>

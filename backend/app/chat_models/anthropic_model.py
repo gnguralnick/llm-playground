@@ -2,7 +2,7 @@ from collections.abc import Generator
 from typing import Iterable, Sequence
 import anthropic
 from chat_models.chat_model import StreamingChatModel, Message, AssistantMessage, TextMessage
-from util import ModelAPI, Role, ModelConfig, RangedFloat, RangedInt
+from util import MessageContentType, ModelAPI, Role, ModelConfig, RangedFloat, RangedInt
 
 class AnthropicConfig(ModelConfig):
     max_tokens: RangedInt = RangedInt(min=1, max=None, val=1024)
@@ -42,7 +42,7 @@ class AnthropicModel(StreamingChatModel):
                 }
                 for c in m.contents:
                     content = {}
-                    if isinstance(c, TextMessage):
+                    if c.type == MessageContentType.TEXT:
                         content['type'] = 'text'
                         content['text'] = c.content
                     else:

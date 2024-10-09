@@ -100,7 +100,7 @@ export function useSendMessageStream(chatId: string) {
     const sendMessage = async (msg: MessageView) => {
         setLoading(true);
         setSentMessage(msg);
-        setResponse({role: 'assistant', content: ''});
+        setResponse({role: 'assistant', contents: [{ type: 'text', content: ''}]});
         const response = await backendFetch(`/chat/${chatId}/stream/`, {
             method: 'POST',
             headers: {
@@ -122,7 +122,19 @@ export function useSendMessageStream(chatId: string) {
             }
             
             const result = decoder.decode(value);
-            setResponse(r => ({role: 'assistant', content: (r?.content ?? '') + result}));
+            setResponse(r => {
+                if (!r) {
+                    return null;
+                }
+                return {
+                    role: 'assistant', 
+                    contents: [
+                        {...r.contents[0], 
+                            content: (r.contents[0].content ?? '') + result
+                        }
+                    ]
+                };
+            });
         }
         setLoading(false);
         setDone(true);

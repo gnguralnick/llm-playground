@@ -14,7 +14,10 @@ class ModelAPI(str, Enum):
     OPENAI = 'openai'
     ANTHROPIC = 'anthropic'
     
-class RangedFloat(BaseModel):
+class ConfigItem(BaseModel):
+    type: str
+    
+class RangedFloat(ConfigItem):
     type: str = 'float'
     min: float | None
     max: float | None
@@ -27,7 +30,7 @@ class RangedFloat(BaseModel):
             raise ValueError(f'Value must be between {cls.min} and {cls.max}')
         return value
     
-class RangedInt(BaseModel):
+class RangedInt(ConfigItem):
     type: str = 'int'
     min: int | None
     max: int | None
@@ -40,7 +43,8 @@ class RangedInt(BaseModel):
             raise ValueError(f'Value must be between {cls.min} and {cls.max}')
         return value
     
-class OptionedString(BaseModel):
+class OptionedString(ConfigItem):
+    type: str = 'string'
     options: list[str]
     val: str
     

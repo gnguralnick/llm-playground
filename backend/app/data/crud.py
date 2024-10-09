@@ -54,18 +54,36 @@ def update_chat(db: Session, chat_id: UUID4, chat: schemas.ChatCreate):
     return db_chat
 
 def create_message(db: Session, message: schemas.MessageCreate, user_id: UUID4, chat_id: UUID4):
-    db_message = models.Message(**message.model_dump(), user_id=user_id, chat_id=chat_id)
+    contents = message.contents
+    message_dict = message.model_dump()
+    message_dict.pop('contents', None)
+    db_message = models.Message(**message_dict, user_id=user_id, chat_id=chat_id)
     db.add(db_message)
     db.commit()
     db.refresh(db_message)
-    return db_message
+    try:
+        for i, content in enumerate(contents):
+            db_content = models.MessageContent(**content.model_dump(), message_id=db_message.id, order=i)
+            db.add(db_content)
+        db.commit()
+        db.refresh(db_message)
+        return db_message
+    except Exception as e:
+        db.delete(db_message)
+        db.commit()
+        raise e
 
 def update_message(db: Session, message_id: UUID4, message: schemas.MessageCreate):
     db_message = db.query(models.Message).filter(models.Message.id == message_id).first()
     if db_message is None:
         raise ValueError('Message not found')
     db_message.role = message.role
-    db_message.content = message.content
+    # db_message.contents = message.contents
+    for content in db_message.contents:
+        db.delete(content)
+    for i, content in enumerate(message.contents):
+        db_content = models.MessageContent(**content.model_dump(), message_id=message_id, order=i)
+        db.add(db_content)
     db_message.model = message.model
     if message.config is not None:
         db_message.config = message.config

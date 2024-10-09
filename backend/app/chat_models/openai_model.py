@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Iterable
+from typing import Iterable, cast
 from chat_models.chat_model import ImageMessageContent, ImageStreamingChatModel, Message, AssistantMessage, TextMessageContent
 from openai import OpenAI
 import openai.types.chat as chat_types
@@ -49,10 +49,11 @@ class OpenAIModel(ImageStreamingChatModel):
             }
             for c in m.contents:
                 content = {}
-                if isinstance(c, TextMessageContent):
+                if c.type == MessageContentType.TEXT:
                     content['type'] = 'text'
                     content['text'] = c.content
-                elif isinstance(c, ImageMessageContent):
+                elif c.type == MessageContentType.IMAGE:
+                    c = ImageMessageContent(image_type=c.image_type, content=c.content)
                     content['type'] = 'image_url'
                     content['image_url'] = {
                         'url': f"data:image/{c.image_type};base64,{c.get_image()}",
