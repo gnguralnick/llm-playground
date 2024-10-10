@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from typing import Iterable, Sequence
 import anthropic
-from chat_models.chat_model import StreamingChatModel
+from chat_models.chat_model import ImageStreamingChatModel
 from util import MessageContentType, ModelAPI, Role, ModelConfig, RangedFloat, RangedInt
 
 from typing import TYPE_CHECKING
@@ -23,7 +23,7 @@ class AnthropicConfig(ModelConfig):
         }
     
 
-class AnthropicModel(StreamingChatModel):
+class AnthropicModel(ImageStreamingChatModel):
     
     api_provider: ModelAPI = ModelAPI.ANTHROPIC
     requires_key: bool = True
@@ -52,6 +52,12 @@ class AnthropicModel(StreamingChatModel):
                     if c.type == MessageContentType.TEXT:
                         content['type'] = 'text'
                         content['text'] = c.content
+                    elif c.type == MessageContentType.IMAGE:
+                        content['type'] = 'image'
+                        content['source'] = {}
+                        content['source']['type'] = 'base64'
+                        content['source']['media_type'] = c.image_type
+                        content['source']['data'] = c.get_image()
                     else:
                         raise ValueError('Unsupported message type')
                     msg['content'].append(content)
