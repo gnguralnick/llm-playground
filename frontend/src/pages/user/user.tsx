@@ -38,7 +38,7 @@ export default function User() {
     
     return (
         <div className={styles.userPage}>
-            <Sidebar />
+            <Sidebar show={true} toggleShow={() => {return;}}/>
             <div className={styles.content}>
                 <h1>Edit User</h1>
                 <form className={styles.form}>

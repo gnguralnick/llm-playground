@@ -184,7 +184,7 @@ export default function Chat() {
                     <div className={cx(styles.message)}>
                         {message.contents.map((content, index) => content.type === 'text'
                             ? <Markdown
-                                children={content.content.replace('\\\\(', '$').replace('\\\\)', '$').replace('\\\\[', '$$').replace('\\\\]', '$$')}
+                                children={content.content.replace(/\\\(/g, '$').replace(/\\\)/g, '$').replace(/\\\[/g, '$$').replace(/\\\]/g, '$$')}
                                 remarkPlugins={[remarkGfm, remarkMath]}
                                 rehypePlugins={[rehypeKatex]}
                                 className={styles.markdown}
