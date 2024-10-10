@@ -14,7 +14,7 @@ This project uses Docker to make production installation simple. First, make sur
 
 Then, simply run
 ```bash
-docker-compose up --build
+docker-compose up
 ```
 
 To spin up the database, frontend, and backend containers.
