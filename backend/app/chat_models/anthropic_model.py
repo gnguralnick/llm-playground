@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from typing import Iterable, Sequence
 import anthropic
-from chat_models.chat_model import ImageStreamingChatModel
-from util import MessageContentType, ModelAPI, Role, ModelConfig, RangedFloat, RangedInt
+from app.chat_models.chat_model import ImageStreamingChatModel
+from app.util import MessageContentType, ModelAPI, Role, ModelConfig, RangedFloat, RangedInt
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:

@@ -8,7 +8,7 @@ import sys
 here = os.path.dirname(__file__)
 sys.path.append(os.path.join(here, '..'))
 
-from config import config
+from app.config import config
 
 SQLALCHEMY_DATABASE_URL = config.database_url
 

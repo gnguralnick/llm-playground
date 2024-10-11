@@ -1,5 +1,5 @@
 from passlib.context import CryptContext
-from data.crud import get_user_by_email
+from app.data.crud import get_user_by_email
 from sqlalchemy.orm import Session
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

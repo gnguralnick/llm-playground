@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 from pydantic import UUID4
 
-from data import models
-import schemas
+from app.data import models
+from app import schemas
 
 def get_user(db: Session, user_id: UUID4) -> models.User | None:
     return db.query(models.User).filter(models.User.id == user_id).first()

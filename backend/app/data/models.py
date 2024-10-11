@@ -1,9 +1,9 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Enum, DateTime, PickleType
+from sqlalchemy import Column, ForeignKey, Integer, String, Enum, DateTime, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 
-from data.database import Base
-from util import Role, ModelAPI, MessageContentType
+from app.data.database import Base
+from app.util import Role, ModelAPI, MessageContentType
 
 import uuid
 
@@ -24,7 +24,7 @@ class Chat(Base):
     title = Column(String, nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey('user.id'), nullable=False)
     default_model = Column(String, nullable=False)
-    config = Column(PickleType, nullable=True)
+    config = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default='now()')
     
     user = relationship('User', back_populates='chats')
@@ -48,7 +48,7 @@ class Message(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     role = Column(Enum(Role), nullable=False)
     model = Column(String, nullable=True)
-    config = Column(PickleType, nullable=True)
+    config = Column(JSON, nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey('user.id'), nullable=False)
     chat_id = Column(UUID(as_uuid=True), ForeignKey('chat.id'), nullable=False)
     created_at = Column(DateTime, nullable=False, server_default='now()')

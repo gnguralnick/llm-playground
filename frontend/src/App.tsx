@@ -1,15 +1,18 @@
 import styles from './App.module.scss';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import UserProvider from './context/userContextProvider';
 import { useEffect } from 'react';
 
 function App() {
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    navigate('/chat');
-  }, [navigate]);
+    if (location.pathname === '/') {
+      navigate('/chat');
+    }
+  }, [navigate, location.pathname]);
   
   return (
     <UserProvider>

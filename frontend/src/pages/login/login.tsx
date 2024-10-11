@@ -14,7 +14,7 @@ export default function Login() {
 
     const login = async (loginForm: FormData) => {
         console.log('logging in');
-        const response = await backendFetch('/token', {
+        const response = await backendFetch('/users/token', {
             method: 'POST',
             body: loginForm,
         });

@@ -4,8 +4,8 @@ import os
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from database import Base, SQLALCHEMY_DATABASE_URL
-from data.models import *
+from app.data.database import Base, SQLALCHEMY_DATABASE_URL
+from app.data.models import *
 
 from alembic import context
 

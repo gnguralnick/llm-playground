@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from util import ModelAPI, ModelConfig
+from app.util import ModelAPI, ModelConfig
 
 from typing import TYPE_CHECKING, Sequence
 
@@ -37,7 +37,7 @@ class ChatModel(ABC):
             if isinstance(config, dict):
                 config = self.config_type(**config)
             if not isinstance(config, self.config_type):
-                raise ValueError('Invalid config type')
+                raise ValueError(f'Invalid config type {type(config)} for model {self.api_name}, expected {self.config_type}')
             self.config = config
 
     @abstractmethod

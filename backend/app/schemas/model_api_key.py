@@ -1,5 +1,5 @@
 from pydantic import BaseModel, UUID4
-from util import ModelAPI
+from app.util import ModelAPI
 
 class ModelAPIKeyBase(BaseModel):
     provider: ModelAPI

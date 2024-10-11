@@ -1,9 +1,8 @@
 from pydantic import BaseModel, UUID4, field_validator
 from util import Role, MessageContentType
-import typing
 import datetime
 import base64
-from chat_models import model_config_type
+from app.chat_models import model_config_type
 
 class MessageContentBase(BaseModel):
     """

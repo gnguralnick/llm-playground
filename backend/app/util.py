@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import BaseModel, field_validator, ValidationInfo
+from pydantic import BaseModel, field_validator, ValidationInfo, model_serializer
 
 class Role(str, Enum):
     """Role of the message sender
@@ -67,5 +67,11 @@ class OptionedString(ConfigItem):
             raise ValueError(f'Value must be one of {cls.options}')
         return value
     
-class ModelConfig(BaseModel):
-    pass
+class ModelConfig(BaseModel, dict):
+    
+    def __dict__(self):
+        return self.model_dump()
+    
+    
+    def json_encode(self):
+        return self.model_dump()
