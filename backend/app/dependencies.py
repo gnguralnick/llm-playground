@@ -55,10 +55,10 @@ async def get_chat(chat_id: UUID4, db: data.Session = Depends(get_db), current_u
     print(type(db_chat), type(db_chat.config))
     return db_chat
 
-def get_message(message: str = Form()) -> schemas.MessageBase:
-    return schemas.MessageBase.model_validate_json(message)
+def get_message(message: str = Form()) -> schemas.Message:
+    return schemas.Message.model_validate_json(message)
 
-async def get_model(message: schemas.MessageBase = Depends(get_message), chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
+async def get_model(message: schemas.Message = Depends(get_message), chat: data.models.Chat = Depends(get_chat), db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
     if message.model is not None:
         # user can select a model for a single message
         model_type = chat_models.get_chat_model(message.model)
@@ -81,7 +81,7 @@ async def get_model(message: schemas.MessageBase = Depends(get_message), chat: d
     message.model = None # user messages should not have a model; this was just for the model selection
     return model, config
 
-def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: schemas.MessageBase = Depends(get_message)) -> schemas.MessageBase:
+def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: schemas.Message = Depends(get_message)) -> schemas.Message:
     """Save image files to disk and update message content to include file paths
 
     Args:

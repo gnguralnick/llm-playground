@@ -41,7 +41,7 @@ def delete_chat(db: data.Session = Depends(dependencies.get_db), db_chat: data.m
     db.commit()
     return {'message': 'Chat deleted', }
 
-def autogen_chat_title(db: data.Session, chat_id: UUID4, messages: list[schemas.MessageBase], model: chat_models.chat_model.ChatModel) -> schemas.chat.Chat:
+def autogen_chat_title(db: data.Session, chat_id: UUID4, messages: list[schemas.Message], model: chat_models.chat_model.ChatModel) -> schemas.chat.Chat:
     db_chat = data.crud.get_chat(db, chat_id)
     if db_chat is None:
         raise HTTPException(status_code=404, detail='Chat not found')
@@ -63,8 +63,8 @@ def autogen_chat_title(db: data.Session, chat_id: UUID4, messages: list[schemas.
     return schemas.chat.Chat.model_validate(db_chat, from_attributes=True)
 
 @router.post('/{chat_id}/', response_model=schemas.MessageView)
-def send_message(chat_id: UUID4, message: schemas.MessageBase = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, ModelConfig] = Depends(dependencies.get_model), assistant_user = Depends(dependencies.get_assistant_user)):
-    chat: schemas.chat.Chat = schemas.chat.Chat.model_validate(db_chat, from_attributes=True)
+def send_message(chat_id: UUID4, message: schemas.Message = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, ModelConfig] = Depends(dependencies.get_model), assistant_user = Depends(dependencies.get_assistant_user)):
+    chat: schemas.ChatFull = schemas.ChatFull.model_validate(db_chat, from_attributes=True)
     
     model, _ = model_with_config
 
@@ -79,7 +79,7 @@ def send_message(chat_id: UUID4, message: schemas.MessageBase = Depends(dependen
         data.crud.delete_message(db=db, message_id=cast(UUID4, db_msg.id))
         raise HTTPException(status_code=400, detail=str(e))
         
-def handle_stream(msg_id: uuid.UUID, db: data.Session, model_name: str, stream: Generator[str, None, None], chat: schemas.chat.Chat, model: chat_models.chat_model.ChatModel):
+def handle_stream(msg_id: uuid.UUID, db: data.Session, model_name: str, stream: Generator[str, None, None], chat: schemas.ChatFull, model: chat_models.chat_model.ChatModel):
     """Process a stream of tokens from a chat model and update the message in the database when the stream ends
 
     Args:
@@ -113,7 +113,7 @@ def handle_stream(msg_id: uuid.UUID, db: data.Session, model_name: str, stream: 
 
 @router.post('/{chat_id}/stream/', response_model=dict)
 async def send_message_stream(chat_id: UUID4, message = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, ModelConfig] = Depends(dependencies.get_model), assistant_user = Depends(dependencies.get_assistant_user)):
-    chat: schemas.chat.Chat = schemas.chat.Chat.model_validate(db_chat, from_attributes=True)
+    chat: schemas.ChatFull = schemas.ChatFull.model_validate(db_chat, from_attributes=True)
     model, config = model_with_config
 
     if not isinstance(model, chat_models.StreamingChatModel):

@@ -4,7 +4,7 @@ import datetime
 import base64
 from app.chat_models import model_config_type
 
-class MessageContentBase(BaseModel):
+class MessageContent(BaseModel):
     """
     The base class for message content. Message content can be text or an image.
     If message content is an image, the content field should be a local file path.
@@ -33,7 +33,7 @@ class MessageContentBase(BaseModel):
             raise ValueError('Image type is required for image content')
         return value
 
-class MessageContent(MessageContentBase):
+class MessageContentFull(MessageContent):
     """
     The content of a message. This class is used for messages retrieved from the database.
     """
@@ -43,27 +43,26 @@ class MessageContent(MessageContentBase):
     class Config:
         orm_mode = True
 
-class MessageBase(BaseModel):
+class Message(BaseModel):
     role: Role
-    contents: list[MessageContentBase]
+    contents: list[MessageContent]
     model: str | None = None
     config: model_config_type | None = None
     
     class Config:
         use_enum_values = True
-
-class Message(MessageBase):
+        
+class MessageView(Message):
     id: UUID4
     user_id: UUID4
     chat_id: UUID4
     created_at: datetime.datetime
-    contents: list[MessageContent]
     
     class Config:
         orm_mode = True
 
-class MessageView(MessageBase):
-    id: UUID4
+class MessageFull(MessageView):
+    contents: list[MessageContent]
     
     class Config:
         orm_mode = True
@@ -87,14 +86,14 @@ class MessageBuilder:
         self.contents = []
         
     def add_text(self, content: str):
-        self.contents.append(MessageContentBase(type=MessageContentType.TEXT, content=content))
+        self.contents.append(MessageContent(type=MessageContentType.TEXT, content=content))
         return self
     
     def add_image(self, content: str, image_type: str):
-        self.contents.append(MessageContentBase(type=MessageContentType.IMAGE, content=content, image_type=image_type))
+        self.contents.append(MessageContent(type=MessageContentType.IMAGE, content=content, image_type=image_type))
         return self
     
     def build(self):
         if len(self.contents) == 0:
             raise ValueError('No content')
-        return MessageBase(role=self.role, contents=self.contents, model=self.model, config=self.config)
+        return Message(role=self.role, contents=self.contents, model=self.model, config=self.config)

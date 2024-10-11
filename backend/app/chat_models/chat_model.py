@@ -5,7 +5,7 @@ from app.util import ModelAPI, ModelConfig
 from typing import TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:
-    from schemas import MessageBase as Message
+    from schemas import Message
 
 class ChatModel(ABC):
     """An abstract class for chat models. It defines the basic methods that all chat models should implement.

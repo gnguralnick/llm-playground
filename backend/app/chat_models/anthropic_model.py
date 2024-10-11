@@ -6,7 +6,7 @@ from app.util import MessageContentType, ModelAPI, Role, ModelConfig, RangedFloa
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from schemas import MessageBase as Message
+    from schemas import Message
 
 class AnthropicConfig(ModelConfig):
     max_tokens: RangedInt = RangedInt(min=1, max=None, val=1024)

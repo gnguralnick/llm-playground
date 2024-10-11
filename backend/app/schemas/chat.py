@@ -4,12 +4,12 @@ from app.schemas.message import MessageView
 from app.chat_models import model_config_type
 from app.chat_models.openai_model import OpenAIConfig
 
-class ChatBase(BaseModel):
+class Chat(BaseModel):
     title: str
     default_model: str = 'gpt-4o-mini'
     config: model_config_type = OpenAIConfig()
     
-class ChatCreate(ChatBase):
+class ChatCreate(Chat):
     system_prompt: str = """You are a helpful assistant. Format responses using Markdown. 
     You may use latex by wrapping in $ symbols (for inline) or $$ symbols (for block).
     e.g $5 + 5 = 10$ or $$5 + 5 = 10$$
@@ -20,19 +20,18 @@ class ChatCreate(ChatBase):
     DO NOT use brackets or parentheses to denote latex; you MUST use $ or $$.
     DO NOT insert any unnecessary backslashes (\\) in your latex.
     """
-
-class Chat(ChatBase):
+    
+class ChatView(Chat):
     id: UUID4
     user_id: UUID4
-    messages: list[MessageView] = []
     created_at: datetime.datetime
     
     class Config:
         orm_mode = True
-        
-class ChatView(ChatBase):
-    id: UUID4
-    user_id: UUID4
+
+class ChatFull(ChatView):
+    messages: list[MessageView] = []
     
     class Config:
         orm_mode = True
+        

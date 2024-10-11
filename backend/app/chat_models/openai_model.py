@@ -7,7 +7,7 @@ from app.util import ModelAPI, ModelConfig, RangedFloat, RangedInt, MessageConte
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from schemas import MessageBase as Message
+    from schemas import Message
 
 class OpenAIConfig(ModelConfig):
     frequency_penalty: RangedFloat = RangedFloat(min=-2, max=2, val=0)
