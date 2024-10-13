@@ -35,7 +35,7 @@ class MessageContent(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     type = Column(Enum(MessageContentType), nullable=False)
-    content = Column(String, nullable=False)
+    content = Column(JSON, nullable=False)
     image_type = Column(String, nullable=True)
     message_id = Column(UUID(as_uuid=True), ForeignKey('message.id'), nullable=False)
     order = Column(Integer, nullable=False)

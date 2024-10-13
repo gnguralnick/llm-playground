@@ -111,9 +111,6 @@ def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: 
             c.image_type = image.content_type
     return message
 
-system_user: data.models.User | None = None # global user for system messages
-assistant_user: data.models.User | None = None # global user for assistant messages
-
 def get_system_user(db: data.Session = Depends(get_db)) -> data.models.User:
     """Get the system user from the database
 
@@ -123,14 +120,13 @@ def get_system_user(db: data.Session = Depends(get_db)) -> data.models.User:
     Returns:
         data.models.User: The system user
     """
-    global system_user
+    
+    system_user = data.crud.get_user_by_email(db, email=config.system_email)
     if system_user is None:
-        system_user = data.crud.get_user_by_email(db, email=config.system_email)
-        if system_user is None:
-            system_user = data.crud.create_user(db, user=schemas.UserCreate(email=config.system_email, password='password'))
+        system_user = data.crud.create_user(db, user=schemas.UserCreate(email=config.system_email, password='password'))
     return system_user
 
-def get_assistant_user(db: data.Session = Depends(get_db)) -> data.models.User:
+def get_assistant_user(db: data.Session = Depends(get_db)) -> schemas.User:
     """Get the assistant user from the database
 
     Args:
@@ -139,9 +135,7 @@ def get_assistant_user(db: data.Session = Depends(get_db)) -> data.models.User:
     Returns:
         data.models.User: The assistant user
     """
-    global assistant_user
+    assistant_user = data.crud.get_user_by_email(db, email=config.assistant_email)
     if assistant_user is None:
-        assistant_user = data.crud.get_user_by_email(db, email=config.assistant_email)
-        if assistant_user is None:
-            assistant_user = data.crud.create_user(db, user=schemas.UserCreate(email=config.assistant_email, password='password'))
-    return assistant_user
+        assistant_user = data.crud.create_user(db, user=schemas.UserCreate(email=config.assistant_email, password='password'))
+    return schemas.User.model_validate(assistant_user, from_attributes=True)
