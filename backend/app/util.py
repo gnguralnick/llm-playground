@@ -67,7 +67,7 @@ class OptionedString(ConfigItem):
             raise ValueError(f'Value must be one of {cls.options}')
         return value
     
-class ModelConfig(BaseModel, dict):
+class ModelConfig(BaseModel):
     
     def __dict__(self):
         return self.model_dump()

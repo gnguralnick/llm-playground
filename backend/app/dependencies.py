@@ -52,7 +52,6 @@ async def get_chat(chat_id: UUID4, db: data.Session = Depends(get_db), current_u
         raise HTTPException(status_code=404, detail='Chat not found')
     if db_chat.user_id != current_user.id:
         raise HTTPException(status_code=403, detail='Not authorized to access chat')
-    print(type(db_chat), type(db_chat.config))
     return db_chat
 
 def get_message(message: str = Form()) -> schemas.Message:
@@ -71,12 +70,10 @@ async def get_model(message: schemas.Message = Depends(get_message), chat: data.
         if db_key is None:
             raise HTTPException(status_code=400, detail='No API key registered for model for this user')
         key = db_key.key
-    print('message config type', type(message.config))
     if message.config is not None:
         config = message.config
     else:
         config = cast(dict, chat.config)
-    print('chat config type', type(chat.config))
     model = model_type(api_key=cast(str, key), config=config) # construct model instance, using API key if required
     message.model = None # user messages should not have a model; this was just for the model selection
     return model, config

@@ -36,7 +36,7 @@ class ChatModel(ABC):
         if config is not None:
             if isinstance(config, dict):
                 config = self.config_type(**config)
-            if not isinstance(config, self.config_type):
+            elif not isinstance(config, self.config_type):
                 raise ValueError(f'Invalid config type {type(config)} for model {self.api_name}, expected {self.config_type}')
             self.config = config
 

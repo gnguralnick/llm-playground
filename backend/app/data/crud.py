@@ -3,6 +3,7 @@ from pydantic import UUID4
 
 from app.data import models
 from app import schemas
+from app.util import Role
 
 def get_user(db: Session, user_id: UUID4) -> models.User | None:
     return db.query(models.User).filter(models.User.id == user_id).first()
@@ -47,14 +48,14 @@ def update_chat(db: Session, chat_id: UUID4, chat: schemas.ChatCreate):
     db_chat.title = chat.title
     db_chat.default_model = chat.default_model
     db_chat.config = chat.config
-    db_system_msg = db.query(models.Message).filter(models.Message.chat_id == chat_id, models.Message.role == schemas.Role.SYSTEM).first()
+    db_system_msg = db.query(models.Message).filter(models.Message.chat_id == chat_id, models.Message.role == Role.SYSTEM).first()
     if db_system_msg is not None:
         db_system_msg.content = chat.system_prompt
     db.commit()
     db.refresh(db_chat)
     return db_chat
 
-def create_message(db: Session, message: schemas.MessageBase, user_id: UUID4, chat_id: UUID4):
+def create_message(db: Session, message: schemas.Message, user_id: UUID4, chat_id: UUID4):
     contents = message.contents
     message_dict = message.model_dump()
     message_dict.pop('contents', None)
@@ -74,7 +75,7 @@ def create_message(db: Session, message: schemas.MessageBase, user_id: UUID4, ch
         db.commit()
         raise e
 
-def update_message(db: Session, message_id: UUID4, message: schemas.MessageBase):
+def update_message(db: Session, message_id: UUID4, message: schemas.Message):
     db_message = db.query(models.Message).filter(models.Message.id == message_id).first()
     if db_message is None:
         raise ValueError('Message not found')
