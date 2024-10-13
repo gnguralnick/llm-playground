@@ -1,10 +1,10 @@
 from pydantic import BaseModel
-from app.util import ModelAPI, ModelConfig
+from app.util import ModelAPI
 from app.chat_models import ChatModel
-import app.chat_models.openai_model as openai
-import app.chat_models.anthropic_model as anthropic
+from app.chat_models.model_config import model_config_type
+from app.chat_models import openai, anthropic
 
-model_config_type = openai.OpenAIConfig | anthropic.AnthropicConfig | ModelConfig
+
 model_types: list[type[ChatModel]] = openai.model_types + anthropic.model_types
 
 class ModelInfo(BaseModel):
@@ -16,8 +16,6 @@ class ModelInfo(BaseModel):
     supports_streaming: bool = False
     supports_images: bool = False
     config: model_config_type
-
-
 
 def get_models() -> list[ModelInfo]:
     return [model.generate_model_info() for model in model_types]

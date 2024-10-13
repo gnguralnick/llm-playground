@@ -1,8 +1,8 @@
 from pydantic import BaseModel, UUID4
 import datetime
 from app.schemas.message import MessageView
-from app.chat_models import model_config_type
-from app.chat_models.openai_model import OpenAIConfig
+from app.chat_models.model_config import model_config_type
+from app.chat_models.openai.openai_model import OpenAIConfig
 
 class Chat(BaseModel):
     title: str

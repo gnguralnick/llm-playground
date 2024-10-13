@@ -1,32 +1,18 @@
 from collections.abc import Generator
 from typing import Iterable, Sequence
 from app.chat_models.chat_model import ImageStreamingChatModel
+from app.chat_models.openai.openai_config import OpenAIConfig
 from openai import OpenAI
 import openai.types.chat as chat_types
-from app.util import ModelAPI, ModelConfig, RangedFloat, RangedInt, MessageContentType, OptionedString, Role
+from app.util import ModelAPI, Role
+
+import logging
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from schemas import Message
+    from app.schemas import Message
 
-class OpenAIConfig(ModelConfig):
-    frequency_penalty: RangedFloat = RangedFloat(min=-2, max=2, val=0)
-    max_completion_tokens: RangedInt = RangedInt(min=1, max=None, val=1024)
-    # n: RangedInt = RangedInt(min=1, max=None, val=1)
-    presence_penalty: RangedFloat = RangedFloat(min=-2, max=2, val=0)
-    temperature: RangedFloat = RangedFloat(min=0, max=2, val=1)
-    top_p: RangedFloat = RangedFloat(min=0, max=1, val=1)
-    image_detail: OptionedString = OptionedString(options=['auto', 'low', 'high'], val='auto')
-    
-    def dump_values(self) -> dict:
-        return {
-            'frequency_penalty': self.frequency_penalty.val,
-            'max_completion_tokens': self.max_completion_tokens.val,
-            # 'n': self.n.val,
-            'presence_penalty': self.presence_penalty.val,
-            'temperature': self.temperature.val,
-            'top_p': self.top_p.val
-        }
+
     
 class OpenAIModel(ImageStreamingChatModel):
 
@@ -47,6 +33,7 @@ class OpenAIModel(ImageStreamingChatModel):
         """
         Convert a sequence of messages to the format expected by the OpenAI API.
         """
+        from app.schemas import ImageMessageContent, TextMessageContent
         res = []
         for m in messages:
             msg = {
@@ -55,17 +42,18 @@ class OpenAIModel(ImageStreamingChatModel):
             }
             for c in m.contents:
                 content = {}
-                if c.type == MessageContentType.TEXT:
+                if isinstance(c, TextMessageContent):
                     content['type'] = 'text'
                     content['text'] = c.content
-                elif c.type == MessageContentType.IMAGE:
+                elif isinstance(c, ImageMessageContent):
                     content['type'] = 'image_url'
                     content['image_url'] = {
                         'url': f"data:image/{c.image_type};base64,{c.get_image()}",
                         'detail': self.config.image_detail.val
                     }
                 else:
-                    raise ValueError('Unsupported message type')
+                    logging.warning(f'Unsupported message type {type(c)} for OpenAI')
+                    continue
                 msg['content'].append(content)
             res.append(msg)
         return res

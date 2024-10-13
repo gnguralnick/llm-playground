@@ -2,7 +2,7 @@ from pydantic import BaseModel, UUID4, field_validator
 from util import Role, MessageContentType
 import datetime
 import base64
-from app.chat_models import model_config_type
+from app.chat_models.model_config import model_config_type
 
 class MessageContent(BaseModel):
     """
@@ -11,14 +11,19 @@ class MessageContent(BaseModel):
     """
     type: MessageContentType
     content: str
-    image_type: str | None = None
     
     class Config:
         use_enum_values = True
         
+class ImageMessageContent(MessageContent):
+    """
+    A message content item that represents an image.
+    """
+    type: MessageContentType = MessageContentType.IMAGE
+    content: str
+    image_type: str
+    
     def get_image(self):
-        if self.type != MessageContentType.IMAGE:
-            raise ValueError('Content is not an image')
         
         # treat content as a local file path and return base64 encoded image
         with open(self.content, 'rb') as f:
@@ -28,10 +33,19 @@ class MessageContent(BaseModel):
     
     @classmethod
     @field_validator('image_type')
-    def validate_image_type(cls, value, values):
-        if values['type'] == MessageContentType.IMAGE and value is None:
+    def validate_image_type(cls, value):
+        if value is None:
             raise ValueError('Image type is required for image content')
         return value
+    
+class TextMessageContent(MessageContent):
+    """
+    A message content item that represents text.
+    """
+    type: MessageContentType = MessageContentType.TEXT
+    content: str
+    
+message_content_type = ImageMessageContent | TextMessageContent
 
 class MessageContentFull(MessageContent):
     """
@@ -45,7 +59,7 @@ class MessageContentFull(MessageContent):
 
 class Message(BaseModel):
     role: Role
-    contents: list[MessageContent]
+    contents: list[message_content_type]
     model: str | None = None
     config: model_config_type | None = None
     
@@ -62,7 +76,7 @@ class MessageView(Message):
         orm_mode = True
 
 class MessageFull(MessageView):
-    contents: list[MessageContent]
+    contents: list[message_content_type]
     
     class Config:
         orm_mode = True
@@ -86,11 +100,11 @@ class MessageBuilder:
         self.contents = []
         
     def add_text(self, content: str):
-        self.contents.append(MessageContent(type=MessageContentType.TEXT, content=content))
+        self.contents.append(TextMessageContent(content=content))
         return self
     
     def add_image(self, content: str, image_type: str):
-        self.contents.append(MessageContent(type=MessageContentType.IMAGE, content=content, image_type=image_type))
+        self.contents.append(ImageMessageContent(content=content, image_type=image_type))
         return self
     
     def build(self):

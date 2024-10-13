@@ -16,14 +16,14 @@ router = APIRouter(
 def read_chats(skip: int = 0, limit: int = 100, db: data.Session = Depends(dependencies.get_db), current_user: schemas.User = Depends(dependencies.get_current_user)):
     return data.crud.get_chats(db, user_id=current_user.id, skip=skip, limit=limit)
 
-@router.post('/', response_model=schemas.Chat)
+@router.post('/', response_model=schemas.ChatView)
 def create_chat(chat: schemas.ChatCreate, db: data.Session = Depends(dependencies.get_db), current_user: schemas.User = Depends(dependencies.get_current_user), system_user = Depends(dependencies.get_system_user)):
     chat_db = data.crud.create_chat(db=db, chat=chat, user_id=current_user.id)
     system_msg = schemas.MessageBuilder(role=Role.SYSTEM).add_text(chat.system_prompt).build()
     data.crud.create_message(db=db, message=system_msg, user_id=cast(UUID4, system_user.id), chat_id=cast(UUID4, chat_db.id))
     return chat_db
 
-@router.get('/{chat_id}', response_model=schemas.Chat)
+@router.get('/{chat_id}', response_model=schemas.ChatFull)
 def read_chat(chat: data.models.Chat = Depends(dependencies.get_chat)):
     return chat
 
@@ -31,7 +31,7 @@ def read_chat(chat: data.models.Chat = Depends(dependencies.get_chat)):
 def read_image(chat_id: UUID4, image_path: str):
     return f'images/{chat_id}/{image_path}'
 
-@router.put('/{chat_id}', response_model=schemas.Chat)
+@router.put('/{chat_id}', response_model=schemas.ChatView)
 def update_chat(chat: schemas.ChatCreate, db_chat: data.models.Chat = Depends(dependencies.get_chat), db: data.Session = Depends(dependencies.get_db)):
     return data.crud.update_chat(db=db, chat_id=cast(UUID4, db_chat.id), chat=chat)
 

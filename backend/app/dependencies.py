@@ -93,12 +93,14 @@ def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: 
         schemas.MessageCreate: The message with updated content, where image content is replaced with local file paths
     """
     for c in message.contents:
-        if c.type == schemas.MessageContentType.IMAGE:
+        if isinstance(c, schemas.ImageMessageContent):
             if files is None:
                 raise HTTPException(status_code=400, detail='Image content requires a file')
             image = next((f for f in files if f.filename == c.content), None)
             if image is None:
                 raise HTTPException(status_code=400, detail='Image content file not found')
+            if image.content_type is None:
+                raise HTTPException(status_code=400, detail='Image content file type not provided')
             image_data = image.file.read()
             # save image to disk and set content to file path
             if not os.path.exists(f'images/{chat_id}'):
