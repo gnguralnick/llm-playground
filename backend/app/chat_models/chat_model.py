@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from app.util import ModelAPI, ModelConfig
+from app.util import ModelAPI, ModelConfig, ModelConfigWithTools
 
-from typing import TYPE_CHECKING, Iterable, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:
     from schemas import Message
@@ -48,7 +48,7 @@ class ChatModel(ABC):
             messages (Sequence[Message]): A list of messages to send to the model. The last message in the list is the one to which the model should respond.
 
         Returns:
-            AssistantMessage: The response from the model.
+            Message: The response from the model.
         """
         pass
     
@@ -91,18 +91,21 @@ class ImageChatModel(ChatModel):
     A chat model that supports images.
     """
     
-    @abstractmethod
-    def chat(self, messages: list['Message']) -> 'Message':
-        pass
-    
     @classmethod
     def generate_model_info(cls):
         info = super().generate_model_info()
         info.supports_images = True
         return info
     
-class ImageStreamingChatModel(StreamingChatModel, ImageChatModel):
-    """
-    A chat model that supports both streaming and images.
-    """
-    pass
+class ToolChatModel(ChatModel):
+    config: ModelConfigWithTools
+    config_type: type[ModelConfigWithTools]
+    
+    def __init__(self, api_key: str | None = None, config: ModelConfigWithTools | dict | None = None, **kwargs) -> None:
+        super().__init__(api_key, config, **kwargs)
+    
+    @classmethod
+    def generate_model_info(cls):
+        info = super().generate_model_info()
+        info.supports_tools = True
+        return info

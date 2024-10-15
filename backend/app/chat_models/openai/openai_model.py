@@ -1,10 +1,12 @@
 from collections.abc import Generator
 from typing import Iterable, Sequence
-from app.chat_models.chat_model import ImageStreamingChatModel
+from app.chat_models.chat_model import ImageChatModel, StreamingChatModel, ToolChatModel
 from app.chat_models.openai.openai_config import OpenAIConfig
 from openai import OpenAI
 import openai.types.chat as chat_types
 from app.util import ModelAPI, Role
+
+import json
 
 import logging
 
@@ -12,7 +14,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.schemas import Message
 
-class OpenAIModel(ImageStreamingChatModel):
+class OpenAIModel(ImageChatModel, StreamingChatModel, ToolChatModel):
 
     api_name: str
     human_name: str
@@ -31,49 +33,126 @@ class OpenAIModel(ImageStreamingChatModel):
         """
         Convert a sequence of messages to the format expected by the OpenAI API.
         """
-        from app.schemas import ImageMessageContent, TextMessageContent
+        from app.schemas import ImageMessageContent, TextMessageContent, ToolUseMessageContent, ToolResultMessageContent
         res = []
         for m in messages:
             msg = {
                 'role': m.role,
-                'content': []
+                'content': None,
+                'tool_calls': None
             }
             for c in m.contents:
-                content = {}
+                content = None
                 if isinstance(c, TextMessageContent):
+                    content = {}
                     content['type'] = 'text'
                     content['text'] = c.content
                 elif isinstance(c, ImageMessageContent):
+                    content = {}
                     content['type'] = 'image_url'
                     content['image_url'] = {
                         'url': f"data:image/{c.image_type};base64,{c.get_image()}",
                         'detail': self.config.image_detail.val
                     }
+                elif isinstance(c, ToolUseMessageContent):
+                    if msg['tool_calls'] is None:
+                        msg['tool_calls'] = []
+                    
+                    tool_call = {
+                        'id': c.id,
+                        'type': 'function',
+                        'function': {
+                            'name': c.content.name,
+                            'arguments': json.dumps(c.content.args)
+                        }
+                    }
+                    
+                    msg['tool_calls'].append(tool_call)
+                elif isinstance(c, ToolResultMessageContent):
+                    # tool results have role 'tool' and are not part of the main message
+                    new_msg = {
+                        'role': 'tool',
+                        'tool_call_id': c.tool_use_id,
+                        'content': json.dumps(c.content)
+                    }
+                    
+                    res.append(new_msg)
+                    continue
                 else:
                     logging.warning(f'Unsupported message type {type(c)} for OpenAI')
                     continue
-                msg['content'].append(content)
-            res.append(msg)
+                if msg['content'] is None and content is not None:
+                    msg['content'] = []
+                if content is not None:
+                    msg['content'].append(content)
+            if msg['content'] is not None and msg['tool_calls'] is not None:
+                # OpenAI API does not allow both content and tool_calls in the same message
+                # so we need to split them into separate messages
+                msg_copy = msg.copy()
+                del msg_copy['content']
+                del msg['tool_calls']
+                res.append(msg)
+                res.append(msg_copy)
+            else:
+                res.append(msg)
+        return res
+    
+    def process_tools(self) -> Iterable[chat_types.ChatCompletionToolParam]:
+        """
+        Convert the tools in the config to the format expected by the OpenAI API.
+        """
+        res = []
+        for tool in self.config.tools:
+            tool_param = {
+                'type': 'function',
+                'function': {
+                    'name': tool.name,
+                    'description': tool.description,
+                    'parameters': {
+                        param: schema.model_dump() for param, schema in tool.parameters.items()
+                    },
+                    'strict': False,
+                },
+            }
+            res.append(tool_param)
         return res
         
     def chat(self, messages: Sequence['Message']) -> 'Message':
-        completion = self._client.chat.completions.create(
+        completion: chat_types.ChatCompletion = self._client.chat.completions.create(
             model=self.api_name,
             messages=self.process_messages(messages),
+            tools=self.process_tools(),
             **self.config.dump_values()
         )
-        
-        if completion.choices[0].message.content is None:
-            raise ValueError('No completion content')
-        
         from schemas import MessageBuilder
-        return MessageBuilder(role=Role.ASSISTANT, model=self.api_name, config=self.config).add_text(completion.choices[0].message.content).build()
+        message = MessageBuilder(role=Role.ASSISTANT, model=self.api_name, config=self.config)
+        
+        match completion.choices[0].finish_reason:
+            case 'stop' | 'length':
+                if completion.choices[0].message.content is None:
+                    raise ValueError('No completion content')
+        
+                message.add_text(completion.choices[0].message.content)
+            case 'tool_calls':
+                if completion.choices[0].message.tool_calls is None:
+                    raise ValueError('No tool calls')
+                for tool_call in completion.choices[0].message.tool_calls:
+                    name = tool_call.function.name
+                    args = json.loads(tool_call.function.arguments)
+                    message.add_tool_use(tool_call.id, name, args)
+            case _:
+                raise ValueError('Unexpected completion finish reason')
+            
+        return message.build()
+        
+
     
     def chat_stream(self, messages: Sequence['Message']) -> Generator[str, None, None]:
         stream = self._client.chat.completions.create(
             model=self.api_name,
             messages=self.process_messages(messages),
             stream=True,
+            tools=self.process_tools(),
             **self.config.dump_values()
         )
         

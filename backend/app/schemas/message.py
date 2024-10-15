@@ -1,51 +1,8 @@
 from pydantic import BaseModel, UUID4, field_validator
-from util import Role, MessageContentType
+from util import Role
 import datetime
-import base64
 from app.chat_models.model_config import model_config_type
-
-class MessageContent(BaseModel):
-    """
-    The base class for message content. Message content can be text or an image.
-    If message content is an image, the content field should be a local file path.
-    """
-    type: MessageContentType
-    content: str
-    
-    class Config:
-        use_enum_values = True
-        
-class ImageMessageContent(MessageContent):
-    """
-    A message content item that represents an image.
-    """
-    type: MessageContentType = MessageContentType.IMAGE
-    content: str
-    image_type: str
-    
-    def get_image(self):
-        
-        # treat content as a local file path and return base64 encoded image
-        with open(self.content, 'rb') as f:
-            encoding = base64.b64encode(f.read()).decode('utf-8')
-            
-        return encoding
-    
-    @classmethod
-    @field_validator('image_type')
-    def validate_image_type(cls, value):
-        if value is None:
-            raise ValueError('Image type is required for image content')
-        return value
-    
-class TextMessageContent(MessageContent):
-    """
-    A message content item that represents text.
-    """
-    type: MessageContentType = MessageContentType.TEXT
-    content: str
-    
-message_content_type = ImageMessageContent | TextMessageContent
+from app.schemas.message_content import MessageContent, ToolCall, message_content_type, TextMessageContent, ImageMessageContent, ToolUseMessageContent, ToolResultMessageContent
 
 class MessageContentFull(MessageContent):
     """
@@ -105,6 +62,14 @@ class MessageBuilder:
     
     def add_image(self, content: str, image_type: str):
         self.contents.append(ImageMessageContent(content=content, image_type=image_type))
+        return self
+    
+    def add_tool_result(self, content: dict, tool_call_id: str):
+        self.contents.append(ToolResultMessageContent(content=content, tool_use_id=tool_call_id))
+        return self
+    
+    def add_tool_use(self, id: str, name: str, args: dict):
+        self.contents.append(ToolUseMessageContent(content=ToolCall(name=name, args=args), id=id))
         return self
     
     def build(self):

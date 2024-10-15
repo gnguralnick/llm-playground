@@ -15,6 +15,7 @@ class ModelInfo(BaseModel):
     user_has_key: bool = False
     supports_streaming: bool = False
     supports_images: bool = False
+    supports_tools: bool = False
     config: model_config_type
 
 def get_models() -> list[ModelInfo]:

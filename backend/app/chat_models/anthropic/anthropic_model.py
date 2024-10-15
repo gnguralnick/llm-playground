@@ -1,17 +1,17 @@
 from collections.abc import Generator
 from typing import Iterable, Sequence
 import anthropic
-from app.chat_models.chat_model import ImageStreamingChatModel
+from app.chat_models.chat_model import ImageChatModel, StreamingChatModel
 from .anthropic_config import AnthropicConfig
 from app.util import ModelAPI, Role
 
 import logging
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 if TYPE_CHECKING:
-    from app.schemas import Message
+    from app.schemas import Message, TextMessageContent
 
-class AnthropicModel(ImageStreamingChatModel):
+class AnthropicModel(ImageChatModel, StreamingChatModel):
     
     api_provider: ModelAPI = ModelAPI.ANTHROPIC
     requires_key: bool = True
@@ -57,10 +57,11 @@ class AnthropicModel(ImageStreamingChatModel):
     def chat(self, messages: Sequence['Message']) -> 'Message':
         system_msg = [m for m in messages if m.role == Role.SYSTEM]
         system_msg = system_msg[0] if system_msg else None
+        system_msg_contents: 'TextMessageContent | None' = cast(TextMessageContent, system_msg.contents[0]) if system_msg is not None else None
         response = self._client.messages.create(
             model=self.api_name,
             messages=self.process_messages(messages),
-            system=system_msg.contents[0].content if system_msg is not None else anthropic.NOT_GIVEN,
+            system=system_msg_contents.content if system_msg_contents is not None else anthropic.NOT_GIVEN,
             **self.config.dump_values()
         )
         
@@ -74,10 +75,11 @@ class AnthropicModel(ImageStreamingChatModel):
     def chat_stream(self, messages: Sequence['Message']) -> Generator[str, None, None]:
         system_msg = [m for m in messages if m.role == Role.SYSTEM]
         system_msg = system_msg[0] if system_msg else None
+        system_msg_contents: 'TextMessageContent | None' = cast(TextMessageContent, system_msg.contents[0]) if system_msg is not None else None
         with self._client.messages.stream(
             model=self.api_name,
             messages=self.process_messages(messages),
-            system=system_msg.contents[0].content if system_msg is not None else anthropic.NOT_GIVEN,
+            system=system_msg_contents.content if system_msg_contents is not None else anthropic.NOT_GIVEN,
             **self.config.dump_values()
         ) as stream:
             for text in stream.text_stream:

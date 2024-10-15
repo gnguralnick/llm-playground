@@ -1,3 +1,41 @@
+export type Role = 'user' | 'assistant' | 'system';
+
+export type MessageContentType = 'text' | 'image' | 'tool_use' | 'tool_result';
+
+export interface MessageContent {
+    type: MessageContentType;
+    content: string | Record<string, string | number> | ToolCall;
+}
+
+export interface TextMessageContent extends MessageContent {
+    type: 'text';
+    content: string;
+}
+
+export interface ImageMessageContent extends MessageContent {
+    type: 'image';
+    image_type: string;
+    image?: File;
+    content: string;
+}
+
+export interface ToolResultMessageContent extends MessageContent {
+    type: 'tool_result';
+    content: Record<string, string | number>;
+    tool_use_id: string;
+}
+
+interface ToolCall {
+    name: string;
+    args: Record<string, string | number>;
+}
+
+export interface ToolUseMessageContent extends MessageContent {
+    type: 'tool_use';
+    content: ToolCall;
+    id: string;
+}
+
 export interface RangedNumber {
     type: 'float' | 'int';
     min: number | null;
@@ -11,31 +49,27 @@ export interface OptionedString {
     val: string;
 }
 
-export type Role = 'user' | 'assistant' | 'system';
-
-export type MessageContentType = 'text' | 'image';
-
-export interface MessageContent {
-    type: MessageContentType;
-    content: string;
+export interface ToolParameter {
+    type: string
+    description: string
+    enum?: string[]
 }
 
-export interface TextMessageContent extends MessageContent {
-    type: 'text';
+export interface ToolConfig {
+    name: string
+    description: string
+    parameters: Record<string, ToolParameter>
+    required: string[]
 }
 
-export interface ImageMessageContent extends MessageContent {
-    type: 'image';
-    image_type: string;
-    image?: File;
-}
+export type ModelConfig = Record<string, RangedNumber | OptionedString> & {tools?: ToolConfig[]};
 
 export interface Message {
     role: Role;
     contents: (TextMessageContent | ImageMessageContent)[];
     id: string;
     model?: string;
-    config?: Record<string, RangedNumber>;
+    config?: ModelConfig;
 }
 
 export type MessageView = Pick<Message, "contents" | "role"> & Partial<Message>;
@@ -47,7 +81,7 @@ export interface Chat {
     messages?: Message[];
     system_prompt?: string;
     default_model: string;
-    config: Record<string, RangedNumber | OptionedString>;
+    config: ModelConfig;
 }
 
 export const MODEL_API_PROVIDERS = ['openai', 'anthropic'] as const;
@@ -68,7 +102,8 @@ export interface Model {
     api_name: string;
     supports_streaming: boolean;
     supports_images: boolean;
-    config: Record<string, RangedNumber>;
+    supports_tools: boolean;
+    config: ModelConfig;
     requires_key: boolean;
     user_has_key: boolean;
 }

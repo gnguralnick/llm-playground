@@ -1,7 +1,7 @@
-from app.util import ModelConfig, RangedFloat, OptionedString, RangedInt
+from app.util import ModelConfigWithTools, RangedFloat, OptionedString, RangedInt
 
 
-class OpenAIConfig(ModelConfig):
+class OpenAIConfig(ModelConfigWithTools):
     frequency_penalty: RangedFloat = RangedFloat(min=-2, max=2, val=0)
     max_completion_tokens: RangedInt = RangedInt(min=1, max=None, val=1024)
     # n: RangedInt = RangedInt(min=1, max=None, val=1)
