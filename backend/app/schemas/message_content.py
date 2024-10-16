@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import UUID4, BaseModel, field_validator
 from app.util import MessageContentType
 import base64
 
@@ -67,3 +67,13 @@ class ToolUseMessageContent(MessageContent):
     id: str
     
 message_content_type = ImageMessageContent | TextMessageContent | ToolResultMessageContent | ToolUseMessageContent
+
+class MessageContentFull(MessageContent):
+    """
+    The content of a message. This class is used for messages retrieved from the database.
+    """
+    id: UUID4
+    message_id: UUID4
+    
+    class Config:
+        orm_mode = True

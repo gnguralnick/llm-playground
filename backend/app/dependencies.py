@@ -1,6 +1,6 @@
 import os
 import uuid
-from fastapi import Depends, Form, HTTPException, UploadFile, status
+from fastapi import Depends, Form, HTTPException, UploadFile, WebSocketException, status
 from fastapi.security import OAuth2PasswordBearer
 import jwt
 from pydantic import UUID4
@@ -17,7 +17,7 @@ def get_db():
         
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/users/token')
         
-async def get_current_user(token: str = Depends(oauth2_scheme), db: data.Session = Depends(get_db)) -> schemas.user.User:
+async def get_current_user(token: str = Depends(oauth2_scheme), db: data.Session = Depends(get_db), req_type: str = 'http') -> schemas.user.User:
     """Get the current user from the JWT token
 
     Args:
@@ -29,11 +29,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: data.Session
     Returns:
         schemas.User: The user associated with the token
     """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    if req_type == 'http':
+        credentials_exception = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    elif req_type == 'websocket':
+        credentials_exception = WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason='Could not validate credentials')
+    else:
+        raise ValueError('Invalid request type')
     try:
         payload = jwt.decode(token, config.secret_key, algorithms=[config.algorithm])
         user_id: UUID4 = uuid.UUID(payload.get('sub'))
@@ -46,12 +51,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: data.Session
         raise credentials_exception
     return db_user
 
-async def get_chat(chat_id: UUID4, db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)) -> data.models.Chat:
+async def get_chat(chat_id: UUID4, db: data.Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user), req_type: str = 'http') -> data.models.Chat:
     db_chat = data.crud.get_chat(db, chat_id=chat_id)
     if db_chat is None:
-        raise HTTPException(status_code=404, detail='Chat not found')
+        raise HTTPException(status_code=404, detail='Chat not found') if req_type == 'http' else WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason='Chat not found')
     if db_chat.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail='Not authorized to access chat')
+        raise HTTPException(status_code=403, detail='Not authorized to access chat') if req_type == 'http' else WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason='Not authorized to access chat')
     return db_chat
 
 def get_message(message: str = Form()) -> schemas.Message:

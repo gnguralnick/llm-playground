@@ -2,7 +2,7 @@ from collections.abc import Generator
 from typing import Iterable, Sequence
 from app.chat_models.chat_model import ImageChatModel, StreamingChatModel, ToolChatModel
 from app.chat_models.openai.openai_config import OpenAIConfig
-from openai import OpenAI
+from openai import OpenAI, NOT_GIVEN, NotGiven
 import openai.types.chat as chat_types
 from app.util import ModelAPI, Role
 
@@ -97,7 +97,7 @@ class OpenAIModel(ImageChatModel, StreamingChatModel, ToolChatModel):
                 res.append(msg)
         return res
     
-    def process_tools(self) -> Iterable[chat_types.ChatCompletionToolParam]:
+    def process_tools(self) -> Iterable[chat_types.ChatCompletionToolParam] | NotGiven:
         """
         Convert the tools in the config to the format expected by the OpenAI API.
         """
@@ -115,7 +115,7 @@ class OpenAIModel(ImageChatModel, StreamingChatModel, ToolChatModel):
                 },
             }
             res.append(tool_param)
-        return res
+        return res if len(res) > 0 else NOT_GIVEN
         
     def chat(self, messages: Sequence['Message']) -> 'Message':
         completion: chat_types.ChatCompletion = self._client.chat.completions.create(

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { Message, Chat, Model, MessageView, User, ModelAPIKey } from './types';
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import UserContext, { UserContextType } from './context/userContext';
 
 export async function backendFetch(url: string, options?: RequestInit, token?: string): Promise<Response> {
@@ -110,54 +110,48 @@ export function useSendMessage(chatId: string) {
 }
 
 export function useSendMessageStream(chatId: string) {
-    const [done, setDone] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [response, setResponse] = useState<MessageView | null>(null);
-    const [sentMessage, setSentMessage] = useState<MessageView | null>(null);
     const { token } = useUser();
 
     const sendMessage = async (msg: MessageView) => {
-        setLoading(true);
-        setSentMessage(msg);
-        setResponse({role: 'assistant', contents: [{ type: 'text', content: ''}]});
         const formData = createMessageFormData(msg);
-        const response = await backendFetch(`/chat/${chatId}/stream/`, {
+        await backendFetch(`/chat/${chatId}/stream/`, {
             method: 'POST',
             body: formData
         }, token);
-        const reader = response.body?.getReader();
-        if (!reader) {
-            setLoading(false);
-            setDone(true);
-            return;
-        }
-        const decoder = new TextDecoder();
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-                break;
-            }
-            
-            const result = decoder.decode(value);
-            setResponse(r => {
-                if (!r) {
-                    return null;
-                }
-                return {
-                    role: 'assistant', 
-                    contents: [
-                        {...r.contents[0], 
-                            content: (r.contents[0].content ?? '') + result
-                        }
-                    ]
-                };
-            });
-        }
-        setLoading(false);
-        setDone(true);
     };
 
-    return {sendMessage, response, loading, done, sentMessage};
+    return sendMessage;
+}
+
+export function useSubscribeToChat(chatId: string, onMessage: (msg: string) => void, onClose?: () => void) {
+    const { token } = useUser();
+    const connection = useRef<WebSocket | null>(null);
+    const subscribeToChat = () => {
+        const ws = new WebSocket(import.meta.env.VITE_WS_URL + `/chat/${chatId}/stream?token=${token}`);
+        ws.onmessage = (event: MessageEvent<string>) => {
+            onMessage(event.data);
+        };
+
+        ws.onclose = () => {
+            if (onClose) {
+                onClose();
+            }
+        };
+
+        connection.current = ws;
+
+        return;
+    }
+
+    useEffect(() => {
+        return () => {
+            if (connection.current) {
+                connection.current.close();
+            }
+        }
+    }, []);
+
+    return subscribeToChat;
 }
 
 export function useCreateChat(navigate?: (url: string) => void) {

@@ -9,7 +9,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { backendFetch, useEditChat, useGetChat, useGetModels, useRefreshSidebar, useSendMessage, useSendMessageStream, useUser } from '../../hooks';
+import { backendFetch, useEditChat, useGetChat, useGetModels, useRefreshSidebar, useSendMessage, useSendMessageStream, useSubscribeToChat, useUser } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
 import { Chat as ChatType, ImageMessageContent, MessageView, TextMessageContent } from '../../types';
 import { useQueryClient } from 'react-query';
@@ -43,7 +43,7 @@ function ChatLoading() {
 }
 
 export default function Chat() {
-    const {token} = useUser();
+    const {token, user} = useUser();
     const [input, setInput] = useState('');
     const [imageInput, setImageInput] = useState<File | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +62,7 @@ export default function Chat() {
     const {isLoading: chatIsLoading, isError: chatIsError, error: chatError, data: chat } = useGetChat(chatId!);
     const {isLoading: modelsAreLoading, data: models} = useGetModels();
     const refreshSidebar = useRefreshSidebar();
+    const [streamError, setStreamError] = useState<string | null>(null);
 
     const navigate = useNavigate();
 
@@ -106,12 +107,25 @@ export default function Chat() {
         void fetchImages();
     }, [chat, token]);
 
-    const {sendMessage: sendMessageStream, response: messageResponse, loading: messageStreamLoading, sentMessage} = useSendMessageStream(chatId!);
+    const sendMessageStream = useSendMessageStream(chatId!);
     const sendMessageMutation = useSendMessage(chatId!);
     const editChatMutation = useEditChat(true, false);
+    const [streamingMessage, setStreamingMessage] = useState('');
+    const subscribeToChat = useSubscribeToChat(chatId!, 
+        (token) => {
+            setStreamingMessage(msg => msg + token);
+        },
+        () => {
+            void queryClient.invalidateQueries(chatId);
+            void queryClient.invalidateQueries(user.id);
+            setStreamingMessage('');
+        }
+    );
 
     const handleSend = async () => {
         if (!chat || !models) return;
+
+        setStreamError(null);
 
         if (input.trim() !== '') {
             let editedChat = chat;
@@ -136,7 +150,9 @@ export default function Chat() {
 
 
             if (model.supports_streaming) {
+                setStreamingMessage('');
                 await sendMessageStream({role: 'user', contents: contents});
+                subscribeToChat();
             } else {
                 sendMessageMutation.mutate({role: 'user', contents: contents});
             }
@@ -298,8 +314,8 @@ export default function Chat() {
             {messages.length > 0 && messages.map((msg, index) => renderMessage(msg, index))}
             {sendMessageMutation.isLoading && sendMessageMutation.variables && renderMessage(sendMessageMutation.variables, messages.length)}
             {sendMessageMutation.isLoading && renderLoadingMessage()}
-            {messageStreamLoading && sentMessage && renderMessage(sentMessage, messages.length)}
-            {messageStreamLoading && messageResponse && renderMessage(messageResponse, messages.length + 1, true)}
+            {streamingMessage && renderMessage({role: 'assistant', contents: [{type: 'text', content: streamingMessage}]}, messages.length)}
+            {streamError && <div className={styles.messageContainer}> <div className={styles.message}>Error: {streamError}</div> </div>}
         </div>
         {renderInput()}
       </div>

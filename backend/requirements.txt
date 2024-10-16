@@ -8,3 +8,4 @@ passlib
 bcrypt
 anthropic
 python-multipart
+websockets
