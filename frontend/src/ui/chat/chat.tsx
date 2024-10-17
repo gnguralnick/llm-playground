@@ -111,15 +111,16 @@ export default function Chat() {
     const sendMessageMutation = useSendMessage(chatId!);
     const editChatMutation = useEditChat(true, false);
     const [streamingMessage, setStreamingMessage] = useState('');
-    const subscribeToChat = useSubscribeToChat(chatId!, 
-        (token) => {
+    useSubscribeToChat(chatId!, 
+        useCallback((token) => {
+            if (token === 'END MESSAGE') {
+                setStreamingMessage('');
+                void queryClient.invalidateQueries(chatId);
+                void queryClient.invalidateQueries(user.id);
+                return;
+            }
             setStreamingMessage(msg => msg + token);
-        },
-        () => {
-            void queryClient.invalidateQueries(chatId);
-            void queryClient.invalidateQueries(user.id);
-            setStreamingMessage('');
-        }
+        }, [queryClient, chatId, user.id]),
     );
 
     const handleSend = async () => {
@@ -152,7 +153,6 @@ export default function Chat() {
             if (model.supports_streaming) {
                 setStreamingMessage('');
                 await sendMessageStream({role: 'user', contents: contents});
-                subscribeToChat();
             } else {
                 sendMessageMutation.mutate({role: 'user', contents: contents});
             }

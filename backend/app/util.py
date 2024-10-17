@@ -1,6 +1,7 @@
 from enum import Enum
 import inspect
-from pydantic import BaseModel, field_validator, ValidationInfo
+from pydantic import BaseModel, field_validator, ValidationInfo, Field
+from typing import Callable
 
 class Role(str, Enum):
     """Role of the message sender
@@ -9,6 +10,7 @@ class Role(str, Enum):
     USER = 'user'
     ASSISTANT = 'assistant'
     SYSTEM = 'system'
+    TOOL = 'tool'
     
 class MessageContentType(str, Enum):
     TEXT = 'text'
@@ -80,6 +82,7 @@ class ToolConfig(BaseModel):
     description: str
     parameters: dict[str, ToolParameter]
     required: list[str]
+    func: Callable = Field(exclude=True)
     
     @classmethod
     def from_func(cls, func):
@@ -108,7 +111,7 @@ class ToolConfig(BaseModel):
             if param.default == inspect.Parameter.empty:
                 required.append(name)
             params[name] = ToolParameter(**param_info)
-        return cls(name=func.__name__, description=func.__doc__, parameters=params, required=required)
+        return cls(name=func.__name__, description=func.__doc__, parameters=params, required=required, func=func)
     
 class ModelConfig(BaseModel):
     pass

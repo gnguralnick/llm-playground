@@ -126,7 +126,7 @@ export function useSendMessageStream(chatId: string) {
 export function useSubscribeToChat(chatId: string, onMessage: (msg: string) => void, onClose?: () => void) {
     const { token } = useUser();
     const connection = useRef<WebSocket | null>(null);
-    const subscribeToChat = () => {
+    useEffect(() => {
         const ws = new WebSocket(import.meta.env.VITE_WS_URL + `/chat/${chatId}/stream?token=${token}`);
         ws.onmessage = (event: MessageEvent<string>) => {
             onMessage(event.data);
@@ -140,18 +140,14 @@ export function useSubscribeToChat(chatId: string, onMessage: (msg: string) => v
 
         connection.current = ws;
 
-        return;
-    }
-
-    useEffect(() => {
         return () => {
-            if (connection.current) {
+            if (connection.current && connection.current.readyState === WebSocket.OPEN) {
                 connection.current.close();
             }
         }
-    }, []);
+    }, [chatId, token, onMessage, onClose]);
 
-    return subscribeToChat;
+    return connection;
 }
 
 export function useCreateChat(navigate?: (url: string) => void) {

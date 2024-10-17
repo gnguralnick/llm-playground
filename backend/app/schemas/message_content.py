@@ -51,22 +51,22 @@ class ToolResultMessageContent(MessageContent):
     """
     type: MessageContentType = MessageContentType.TOOL_RESULT
     content: dict
-    tool_use_id: str
+    tool_call_id: str
     
 class ToolCall(BaseModel):
     name: str
     args: dict
 
-class ToolUseMessageContent(MessageContent):
+class ToolCallMessageContent(MessageContent):
     """
     A message content item that represents the use of a tool.
     Content should be a dictionary whose structure is defined by the tool.
     """
     type: MessageContentType = MessageContentType.TOOL_USE
     content: ToolCall
-    id: str
+    tool_call_id: str
     
-message_content_type = ImageMessageContent | TextMessageContent | ToolResultMessageContent | ToolUseMessageContent
+message_content_type = ImageMessageContent | TextMessageContent | ToolResultMessageContent | ToolCallMessageContent
 
 class MessageContentFull(MessageContent):
     """

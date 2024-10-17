@@ -1,10 +1,13 @@
+import os
+import shutil
 import uuid
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, WebSocket, WebSocketException, WebSocketDisconnect
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from pydantic import UUID4
 from app import data, schemas, dependencies, chat_models
 from app.util import Role, ModelConfig
-from typing import Generator, cast
+from app.tools import tools
+from typing import cast
 from app.chat_stream import ChatStreamManager
 import asyncio
 
@@ -39,6 +42,8 @@ def update_chat(chat: schemas.ChatCreate, db_chat: data.models.Chat = Depends(de
 
 @router.delete('/{chat_id}')
 def delete_chat(db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat)):
+    if os.path.exists(f'images/{db_chat.id}'):
+        shutil.rmtree(f'images/{db_chat.id}')
     db.delete(db_chat)
     db.commit()
     return {'message': 'Chat deleted', }
@@ -48,7 +53,7 @@ def autogen_chat_title(db: data.Session, chat_id: UUID4, messages: list[schemas.
     if db_chat is None:
         raise HTTPException(status_code=404, detail='Chat not found')
     chat_create = schemas.chat.ChatCreate.model_validate(db_chat, from_attributes=True)
-    prompt = "Below is a conversation between a user and an AI assistant. Generate a title for this chat. The title should be short and memorable. Respond with the title only. Do not include quotation marks."
+    prompt = "Below is a conversation between a user and an AI assistant. Generate a title for this chat. The title should be short and memorable. Respond with the title only. Do not include quotation marks. Do not use any tools."
     for m in messages:
         if m.role == Role.USER:
             prompt += f"\nUser: {m.contents[0].content}"
@@ -63,21 +68,50 @@ def autogen_chat_title(db: data.Session, chat_id: UUID4, messages: list[schemas.
     
     return schemas.chat.Chat.model_validate(db_chat, from_attributes=True)
 
+def handle_tool_calls(message: schemas.Message, user_id: UUID4, chat_id: UUID4, db: data.Session):
+    tool_result_message = schemas.MessageBuilder(role=Role.TOOL)
+    for content in message.contents:
+        if isinstance(content, schemas.ToolCallMessageContent):
+            tool_call = content.content
+            tool = tools.get(tool_call.name)
+            if tool is None:
+                raise HTTPException(status_code=400, detail=f'Tool {tool_call.name} not found')
+            tool_result = tool.func(**tool_call.args)
+            tool_result_message.add_tool_result(tool_result, tool_call_id=content.tool_call_id)
+    
+    db_msg = data.crud.create_message(db=db, message=tool_result_message.build(), user_id=user_id, chat_id=chat_id)
+    
+    return db_msg
+
 @router.post('/{chat_id}/', response_model=schemas.MessageView)
 def send_message(chat_id: UUID4, current_user: schemas.User = Depends(dependencies.get_current_user), message: schemas.Message = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, ModelConfig] = Depends(dependencies.get_model), assistant_user = Depends(dependencies.get_assistant_user)):
     chat: schemas.ChatFull = schemas.ChatFull.model_validate(db_chat, from_attributes=True)
     
     model, _ = model_with_config
-
-    response_msg = model.chat(chat.messages + [message])
-    db_msg = data.crud.create_message(db=db, message=message, user_id=current_user.id, chat_id=chat_id)
+    
+    db_msgs = []
+    
     try:
-        msg = data.crud.create_message(db=db, message=response_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
+        db_msg = data.crud.create_message(db=db, message=message, user_id=current_user.id, chat_id=chat_id)
+        db_msgs.append(db_msg)
+        messages = chat.messages + [message]
+        while True:
+            response_msg = model.chat(messages)
+            msg = data.crud.create_message(db=db, message=response_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
+            db_msgs.append(msg)
+            if not response_msg.has_tool_calls():
+                break
+            db_msg = handle_tool_calls(response_msg, current_user.id, chat_id, db)
+            db_msgs.append(db_msg)
+            tool_msg = schemas.Message.model_validate(db_msg, from_attributes=True)
+            messages.append(tool_msg)
         if chat.title == 'New Chat':
             autogen_chat_title(db, chat_id, chat.messages + [message, response_msg], model)
         return msg
     except Exception as e:
-        data.crud.delete_message(db=db, message_id=cast(UUID4, db_msg.id))
+        # rollback messages
+        for db_msg in db_msgs:
+            data.crud.delete_message(db=db, message_id=cast(UUID4, db_msg.id))
         raise HTTPException(status_code=400, detail=str(e))
      
 stream_manager = ChatStreamManager()
@@ -92,7 +126,7 @@ def handle_stream(chat_id: UUID4, message: schemas.Message, chat: schemas.ChatFu
         str: The tokens from the stream
     """
     
-    stream_manager.add_chat(chat_id)
+    stream_manager.reset_chat(chat_id)
     
     stream = model.chat_stream(chat.messages + [message])
 
@@ -105,18 +139,19 @@ def handle_stream(chat_id: UUID4, message: schemas.Message, chat: schemas.ChatFu
             break
         asyncio.run(stream_manager.send_message(chat_id, token))
         
+    asyncio.run(stream_manager.end_message(chat_id))
     message_txt = stream_manager.get_full_message(chat_id)
     new_message = schemas.MessageBuilder(role=Role.ASSISTANT, model=model.api_name).add_text(message_txt).build()
     db = next(dependencies.get_db())
     try:
         assistant_user = dependencies.get_assistant_user(db=db)
         data.crud.create_message(db=db, message=new_message, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
-        stream_manager.remove_chat(chat_id)
+        stream_manager.reset_chat(chat_id)
         if chat.title == 'New Chat':
             autogen_chat_title(db, chat_id, chat.messages + [new_message], model)
     except Exception as e:
         data.crud.delete_message(db=db, message_id=user_msg_id)
-        stream_manager.remove_chat(chat_id)
+        stream_manager.reset_chat(chat_id)
         raise HTTPException(status_code=400, detail=str(e))
     finally:
         db.close()
@@ -143,10 +178,9 @@ async def consume_chat_stream(websocket: WebSocket, chat_id: UUID4, token: str =
     await websocket.accept()
     try:
         await websocket.send_text(stream_manager.get_full_message(chat_id))
-        while stream_manager.chat_is_active(chat_id):
+        while True:
             msg = await stream_manager.consume_message(chat_id)
+            print('sending', msg)
             await websocket.send_text(msg)
-    except KeyError:
-        print('chat not active')
-    finally:
-        await websocket.close()
+    except WebSocketDisconnect:
+        pass

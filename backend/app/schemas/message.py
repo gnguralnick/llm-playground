@@ -2,17 +2,9 @@ from pydantic import BaseModel, UUID4, field_validator
 from util import Role
 import datetime
 from app.chat_models.model_config import model_config_type
-from app.schemas.message_content import MessageContent, ToolCall, message_content_type, TextMessageContent, ImageMessageContent, ToolUseMessageContent, ToolResultMessageContent
+from app.schemas.message_content import MessageContent, ToolCall, message_content_type, TextMessageContent, ImageMessageContent, ToolCallMessageContent, ToolResultMessageContent
 
-class MessageContentFull(MessageContent):
-    """
-    The content of a message. This class is used for messages retrieved from the database.
-    """
-    id: UUID4
-    message_id: UUID4
-    
-    class Config:
-        orm_mode = True
+
 
 class Message(BaseModel):
     role: Role
@@ -22,6 +14,9 @@ class Message(BaseModel):
     
     class Config:
         use_enum_values = True
+        
+    def has_tool_calls(self):
+        return any(isinstance(c, ToolCallMessageContent) for c in self.contents)
         
 class MessageView(Message):
     id: UUID4
@@ -65,11 +60,11 @@ class MessageBuilder:
         return self
     
     def add_tool_result(self, content: dict, tool_call_id: str):
-        self.contents.append(ToolResultMessageContent(content=content, tool_use_id=tool_call_id))
+        self.contents.append(ToolResultMessageContent(content=content, tool_call_id=tool_call_id))
         return self
     
     def add_tool_use(self, id: str, name: str, args: dict):
-        self.contents.append(ToolUseMessageContent(content=ToolCall(name=name, args=args), id=id))
+        self.contents.append(ToolCallMessageContent(content=ToolCall(name=name, args=args), tool_call_id=id))
         return self
     
     def build(self):

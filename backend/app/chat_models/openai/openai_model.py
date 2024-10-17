@@ -33,7 +33,7 @@ class OpenAIModel(ImageChatModel, StreamingChatModel, ToolChatModel):
         """
         Convert a sequence of messages to the format expected by the OpenAI API.
         """
-        from app.schemas import ImageMessageContent, TextMessageContent, ToolUseMessageContent, ToolResultMessageContent
+        from app.schemas import ImageMessageContent, TextMessageContent, ToolCallMessageContent, ToolResultMessageContent
         res = []
         for m in messages:
             msg = {
@@ -54,12 +54,12 @@ class OpenAIModel(ImageChatModel, StreamingChatModel, ToolChatModel):
                         'url': f"data:image/{c.image_type};base64,{c.get_image()}",
                         'detail': self.config.image_detail.val
                     }
-                elif isinstance(c, ToolUseMessageContent):
+                elif isinstance(c, ToolCallMessageContent):
                     if msg['tool_calls'] is None:
                         msg['tool_calls'] = []
                     
                     tool_call = {
-                        'id': c.id,
+                        'id': c.tool_call_id,
                         'type': 'function',
                         'function': {
                             'name': c.content.name,
@@ -72,7 +72,7 @@ class OpenAIModel(ImageChatModel, StreamingChatModel, ToolChatModel):
                     # tool results have role 'tool' and are not part of the main message
                     new_msg = {
                         'role': 'tool',
-                        'tool_call_id': c.tool_use_id,
+                        'tool_call_id': c.tool_call_id,
                         'content': json.dumps(c.content)
                     }
                     
@@ -152,7 +152,7 @@ class OpenAIModel(ImageChatModel, StreamingChatModel, ToolChatModel):
             model=self.api_name,
             messages=self.process_messages(messages),
             stream=True,
-            tools=self.process_tools(),
+            # tools=self.process_tools(),
             **self.config.dump_values()
         )
         
