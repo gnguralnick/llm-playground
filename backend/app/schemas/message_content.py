@@ -50,7 +50,7 @@ class ToolResultMessageContent(MessageContent):
     Content should be a dictionary whose structure is defined by the tool.
     """
     type: MessageContentType = MessageContentType.TOOL_RESULT
-    content: dict
+    content: object
     tool_call_id: str
     
 class ToolCall(BaseModel):
@@ -62,7 +62,7 @@ class ToolCallMessageContent(MessageContent):
     A message content item that represents the use of a tool.
     Content should be a dictionary whose structure is defined by the tool.
     """
-    type: MessageContentType = MessageContentType.TOOL_USE
+    type: MessageContentType = MessageContentType.TOOL_CALL
     content: ToolCall
     tool_call_id: str
     

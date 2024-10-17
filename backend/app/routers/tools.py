@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app import dependencies
-from app.tools import tools
+from app.tools import get_tools
 from app.util import ToolConfig
 
 router = APIRouter(
@@ -10,15 +10,15 @@ router = APIRouter(
     dependencies=[Depends(dependencies.get_current_user)]
 )
 
-@router.get('/', response_model=list[ToolConfig])
+@router.get('/', response_model=list[ToolConfig], response_model_exclude_unset=True)
 def read_tools():
-    return list(tools.values())
+    return list(get_tools().values())
 
-@router.get('/{tool_name}', response_model=ToolConfig)
+@router.get('/{tool_name}', response_model=ToolConfig, response_model_exclude_unset=True)
 def read_tool(tool_name: str):
-    return tools[tool_name]
+    return get_tools()[tool_name]
 
-@router.post('/{tool_name}', response_model=ToolConfig)
+@router.post('/{tool_name}', response_model=dict)
 def run_tool(tool_name: str, tool_input: dict):
-    tool = tools[tool_name]
+    tool = get_tools()[tool_name]
     return tool.func(tool_input)

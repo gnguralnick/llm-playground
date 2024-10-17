@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from pydantic import UUID4
 from app import data, schemas, dependencies, chat_models
 from app.util import Role, ModelConfig
-from app.tools import tools
+from app.tools import get_tools
 from typing import cast
 from app.chat_stream import ChatStreamManager
 import asyncio
@@ -38,6 +38,15 @@ def read_image(chat_id: UUID4, image_path: str):
 
 @router.put('/{chat_id}', response_model=schemas.ChatView)
 def update_chat(chat: schemas.ChatCreate, db_chat: data.models.Chat = Depends(dependencies.get_chat), db: data.Session = Depends(dependencies.get_db)):
+    old_chat = schemas.ChatFull.model_validate(db_chat, from_attributes=True)
+    if chat.config is None:
+        chat.config = old_chat.config
+    for tool_name in chat.tools:
+        if get_tools().get(tool_name) is None:
+            raise HTTPException(status_code=400, detail=f'Tool {tool_name} not found')
+        if not hasattr(chat.config, 'tools'):
+            raise HTTPException(status_code=400, detail='Chat model does not support tools')
+        chat.config.tools.append(get_tools()[tool_name])
     return data.crud.update_chat(db=db, chat_id=cast(UUID4, db_chat.id), chat=chat)
 
 @router.delete('/{chat_id}')
@@ -69,14 +78,17 @@ def autogen_chat_title(db: data.Session, chat_id: UUID4, messages: list[schemas.
     return schemas.chat.Chat.model_validate(db_chat, from_attributes=True)
 
 def handle_tool_calls(message: schemas.Message, user_id: UUID4, chat_id: UUID4, db: data.Session):
+    print('handling tool calls')
     tool_result_message = schemas.MessageBuilder(role=Role.TOOL)
     for content in message.contents:
         if isinstance(content, schemas.ToolCallMessageContent):
             tool_call = content.content
-            tool = tools.get(tool_call.name)
+            print('tool call', tool_call)
+            tool = get_tools().get(tool_call.name)
             if tool is None:
                 raise HTTPException(status_code=400, detail=f'Tool {tool_call.name} not found')
             tool_result = tool.func(**tool_call.args)
+            print('tool result', tool_result)
             tool_result_message.add_tool_result(tool_result, tool_call_id=content.tool_call_id)
     
     db_msg = data.crud.create_message(db=db, message=tool_result_message.build(), user_id=user_id, chat_id=chat_id)
@@ -97,6 +109,7 @@ def send_message(chat_id: UUID4, current_user: schemas.User = Depends(dependenci
         messages = chat.messages + [message]
         while True:
             response_msg = model.chat(messages)
+            messages.append(response_msg)
             msg = data.crud.create_message(db=db, message=response_msg, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
             db_msgs.append(msg)
             if not response_msg.has_tool_calls():

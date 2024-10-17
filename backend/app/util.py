@@ -1,7 +1,8 @@
 from enum import Enum
 import inspect
-from pydantic import BaseModel, field_validator, ValidationInfo, Field
-from typing import Callable
+from pydantic import BaseModel, field_validator, ValidationInfo, Field, model_validator
+from typing import Callable, Any
+import re
 
 class Role(str, Enum):
     """Role of the message sender
@@ -15,7 +16,7 @@ class Role(str, Enum):
 class MessageContentType(str, Enum):
     TEXT = 'text'
     IMAGE = 'image'
-    TOOL_USE = 'tool_use'
+    TOOL_CALL = 'tool_call'
     TOOL_RESULT = 'tool_result'
     
 class ModelAPI(str, Enum):
@@ -84,34 +85,55 @@ class ToolConfig(BaseModel):
     required: list[str]
     func: Callable = Field(exclude=True)
     
+    @model_validator(mode='before')
+    @classmethod
+    def populate_func(cls, data: Any) -> Any:
+        from app.tools import get_tools
+        if 'func' not in data:
+            tool = get_tools().get(data['name'])
+            if tool is None:
+                raise ValueError(f'No tool found with name {data["name"]}')
+            data['func'] = tool.func
+        return data
+    
     @classmethod
     def from_func(cls, func):
         sig = inspect.signature(func)
         params = {}
         required = []
+        doc: str = func.__doc__
+        description = doc.split('Args:')[0].strip()
         for name, param in sig.parameters.items():
-            param_type = str(param.annotation)
-            enum = None
-            if param_type == 'str':
+            enum: list[str] | None = None
+            param_type = param.annotation
+            if param_type == str:
                 param_type = 'string'
-            elif param_type == 'int':
+            elif param_type == int:
                 param_type = 'integer'
-            elif param_type == 'float':
+            elif param_type == float:
                 param_type = 'number'
-            elif param_type == 'bool':
+            elif param_type == bool:
                 param_type = 'boolean'
-            elif param_type.startswith('<enum'):
+            elif issubclass(param_type, Enum):
                 param_type = 'string'
                 enum = [x.name for x in param.annotation]
+                
+            # each parameter should have a line in the docstring of the form
+            # <param_name> (<param_type>): <param_description>
+            arg_doc = re.search(f'{name} \\(([^)]+)\\): (.+)', doc)
+            if arg_doc is None:
+                raise ValueError(f'No documentation found for parameter {name}')
+            param_description = arg_doc.group(2)
             param_info = {
                 'type': param_type,
-                'description': param.annotation,
-                'enum': enum
+                'description': param_description,
             }
+            if enum is not None:
+                param_info['enum'] = enum
             if param.default == inspect.Parameter.empty:
                 required.append(name)
             params[name] = ToolParameter(**param_info)
-        return cls(name=func.__name__, description=func.__doc__, parameters=params, required=required, func=func)
+        return cls(name=func.__name__, description=description, parameters=params, required=required, func=func)
     
 class ModelConfig(BaseModel):
     pass

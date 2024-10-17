@@ -39,6 +39,7 @@ class MessageContent(Base):
     image_type = Column(String, nullable=True)
     message_id = Column(UUID(as_uuid=True), ForeignKey('message.id'), nullable=False)
     order = Column(Integer, nullable=False)
+    tool_call_id = Column(String, nullable=True)
     
     message = relationship('Message', back_populates='contents')
 

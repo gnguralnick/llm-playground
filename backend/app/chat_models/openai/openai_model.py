@@ -93,7 +93,7 @@ class OpenAIModel(ImageChatModel, StreamingChatModel, ToolChatModel):
                 del msg['tool_calls']
                 res.append(msg)
                 res.append(msg_copy)
-            else:
+            elif msg['content'] is not None or msg['tool_calls'] is not None:
                 res.append(msg)
         return res
     
@@ -109,7 +109,11 @@ class OpenAIModel(ImageChatModel, StreamingChatModel, ToolChatModel):
                     'name': tool.name,
                     'description': tool.description,
                     'parameters': {
-                        param: schema.model_dump() for param, schema in tool.parameters.items()
+                        'type': 'object',
+                        'properties': {
+                            param: schema.model_dump(exclude_none=True) for param, schema in tool.parameters.items()
+                        },
+                        'required': tool.required
                     },
                     'strict': False,
                 },

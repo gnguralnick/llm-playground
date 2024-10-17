@@ -1,4 +1,4 @@
-from pydantic import BaseModel, UUID4
+from pydantic import BaseModel, UUID4, Field
 import datetime
 from app.schemas.message import MessageView
 from app.chat_models.model_config import model_config_type
@@ -20,6 +20,7 @@ class ChatCreate(Chat):
     DO NOT use brackets or parentheses to denote latex; you MUST use $ or $$.
     DO NOT insert any unnecessary backslashes (\\) in your latex.
     """
+    tools: list[str] = Field(default_factory=list, exclude=True)
     
 class ChatView(Chat):
     id: UUID4

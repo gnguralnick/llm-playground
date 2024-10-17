@@ -47,10 +47,11 @@ def update_chat(db: Session, chat_id: UUID4, chat: schemas.ChatCreate):
         raise ValueError('Chat not found')
     db_chat.title = chat.title
     db_chat.default_model = chat.default_model
-    db_chat.config = chat.config
+    if chat.config is not None:
+        db_chat.config = chat.config
     db_system_msg = db.query(models.Message).filter(models.Message.chat_id == chat_id, models.Message.role == Role.SYSTEM).first()
     if db_system_msg is not None:
-        db_system_msg.content = chat.system_prompt
+        db_system_msg.contents[0].content = chat.system_prompt
     db.commit()
     db.refresh(db_chat)
     return db_chat
