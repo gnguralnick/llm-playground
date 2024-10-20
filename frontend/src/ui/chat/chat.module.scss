@@ -115,6 +115,26 @@
             align-self: flex-start;
             max-width: 100%;
         }
+
+        .toolCall {
+            .name {
+                margin: 0;
+            }
+
+            .argsHeader {
+                margin: 0;
+                color: #ccc;
+            }
+
+            .args {
+                margin: 0;
+                padding: 0;
+                list-style-type: none;
+                display: flex;
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+        }
     }
 
     &.system {
@@ -124,6 +144,22 @@
 
         button {
             margin-bottom: 1rem;
+        }
+    }
+
+    .toolCallCtr {
+        margin-bottom: 1rem;
+    }
+
+    .toolResult {
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+        border-radius: 10px;
+        background-color: #ececec3a;
+
+        * {
+            margin: 0;
         }
     }
 }

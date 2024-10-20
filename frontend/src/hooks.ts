@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { Message, Chat, Model, MessageView, User, ModelAPIKey } from './types';
+import { Message, Chat, Model, MessageView, User, ModelAPIKey, ToolConfig } from './types';
 import { useContext, useEffect, useRef, useState } from 'react';
 import UserContext, { UserContextType } from './context/userContext';
 
@@ -26,7 +26,7 @@ export function useUser(): UserContextType {
     return context;
 }
 
-export function useGetUser(token?: string) {
+export function useGetUser(token?: string, navigate?: (url: string) => void) {
     return useQuery({
         queryKey: ['user', {token}],
         queryFn: async ({queryKey}) => {
@@ -35,6 +35,12 @@ export function useGetUser(token?: string) {
                 return null;
             }
             const response = await backendFetch('/users/me', undefined, token);
+            if (!response.ok) {
+                if (navigate) {
+                    navigate('/login');
+                }
+                return null;
+            }
             const json: unknown = await response?.json();
             const user: User = json as User;
             return user;
@@ -95,9 +101,6 @@ export function useSendMessage(chatId: string) {
             const formData = createMessageFormData(msg);
             const response = await backendFetch(`/chat/${chatId}/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                },
                 body: formData
             }, token);
             const json: unknown = await response.json();
@@ -229,6 +232,19 @@ export function useGetModels() {
             const json: unknown = await response?.json();
             const models: Model[] = json as Model[];
             return models;
+        }
+    });
+}
+
+export function useGetTools() {
+    const { token } = useUser();
+    return useQuery({
+        queryKey: 'tools',
+        queryFn: async () => {
+            const response = await backendFetch(`/tools/`, undefined, token);
+            const json: unknown = await response?.json();
+            const tools: ToolConfig[] = json as ToolConfig[];
+            return tools;
         }
     });
 }

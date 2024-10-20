@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import styles from './chat.module.scss';
 import clsx from 'clsx';
 import { ArrowUp } from '../assets/icons';
@@ -9,9 +9,9 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { backendFetch, useEditChat, useGetChat, useGetModels, useRefreshSidebar, useSendMessage, useSendMessageStream, useSubscribeToChat, useUser } from '../../hooks';
+import { backendFetch, useEditChat, useGetChat, useGetModels, useGetTools, useRefreshSidebar, useSendMessage, useSendMessageStream, useSubscribeToChat, useUser } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
-import { Chat as ChatType, ImageMessageContent, MessageView, TextMessageContent } from '../../types';
+import { Chat as ChatType, ImageMessageContent, MessageContent, MessageView, TextMessageContent, ToolCallMessageContent, ToolResultMessageContent } from '../../types';
 import { useQueryClient } from 'react-query';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faImage } from '@fortawesome/free-solid-svg-icons';
@@ -61,6 +61,7 @@ export default function Chat() {
     const queryClient = useQueryClient();
     const {isLoading: chatIsLoading, isError: chatIsError, error: chatError, data: chat } = useGetChat(chatId!);
     const {isLoading: modelsAreLoading, data: models} = useGetModels();
+    const {data: tools} = useGetTools();
     const refreshSidebar = useRefreshSidebar();
     const [streamError, setStreamError] = useState<string | null>(null);
 
@@ -150,7 +151,7 @@ export default function Chat() {
             contents.push({type: 'text', content: msg});
 
 
-            if (model.supports_streaming) {
+            if (model.supports_streaming && chat.config.tools?.length === 0) {
                 setStreamingMessage('');
                 await sendMessageStream({role: 'user', contents: contents});
             } else {
@@ -173,13 +174,80 @@ export default function Chat() {
         }
     };
 
+    const renderMessageContent = (content: MessageContent, index: number) => {
+        if (content.type === 'text') {
+            return <div key={index}>
+                <button className={styles.copyButton} onClick={() => void navigator.clipboard.writeText((content as TextMessageContent).content)}>
+                    <FontAwesomeIcon icon={faCopy} />
+                </button>
+                <Markdown
+                    children={(content as TextMessageContent).content.replace(/\\\(/g, '$').replace(/\\\)/g, '$').replace(/\\\[/g, '$$').replace(/\\\]/g, '$$')}
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                    className={styles.markdown}
+                    key={index}
+                    components={{
+                    code(props) {
+                        const {children, className, ...rest} = props
+                        const match = /language-(\w+)/.exec(className ?? '')
+                        return match ? (
+                        <SyntaxHighlighter
+                            PreTag="div"
+                            children={String(children).replace(/\n$/, '')}
+                            language={match[1]}
+                            style={materialDark}
+                        />
+                        ) : (
+                        <code {...rest} className={className}>
+                            {children}
+                        </code>
+                        )
+                    }
+                }}/>
+            </div>
+        } else if (content.type === 'image') {
+            const imageContent = content as ImageMessageContent;
+            return <img key={index} src={(imageContent.image ? URL.createObjectURL(imageContent.image) : undefined) ?? images[imageContent.content]} alt='Image' style={{maxWidth: '100%', maxHeight: '100%'}}/>
+        } else if (content.type === 'tool_call') {
+            const toolCallContent = content as ToolCallMessageContent;
+            let toolResult = undefined;
+            for (const message of messages.filter(m => m.role === 'tool')) {
+                for (const content of message.contents.filter(c => c.type === 'tool_result')) {
+                    if (content.tool_call_id === toolCallContent.tool_call_id) {
+                        toolResult = content;
+                        break;
+                    }
+                }
+            }
+            console.log(toolResult);
+            return <div className={styles.toolCallCtr}>
+                <div key={index} className={styles.toolCall}>
+                    <h3 className={styles.name}>Tool Call: {toolCallContent.content.name}</h3>
+                    <h4 className={styles.argsHeader}>Arguments:</h4>
+                    <div className={styles.args}>{Object.entries(toolCallContent.content.args).map((arg, index) => <div key={index} className={styles.arg}>
+                        <span className={styles.argName}>{arg[0]}: </span>
+                        <span className={styles.argVal}>{arg[1]}</span>
+                    </div>)}</div>
+                </div>
+                {toolResult && <div key={index} className={styles.toolResult}>
+                <h3>Result</h3>
+                    <pre>{JSON.stringify(toolResult.content, null, 2)}</pre>
+                </div>}
+            </div>;
+        }
+    }
+
     const renderMessage = (message: MessageView, index: number, scroll?: boolean) => {
+        if (message.role === 'tool') {
+            return null;
+        }
+
         if (message.role === 'system') {
             return <div key={index} className={cx(styles.messageContainer, styles.system)}>
                 <button onClick={() => setShowSystem(!showSystem)} className={styles.systemButton}>
                     {showSystem ? 'Hide' : 'Show'} System Prompt
                 </button>
-                {showSystem && message.contents[0].content}
+                {showSystem && (message.contents[0] as TextMessageContent).content}
             </div>;
         }
 
@@ -191,40 +259,11 @@ export default function Chat() {
                 
                 <div className={cx(styles.info)}>
                         {message.role === 'assistant' && message.model && message.model !== chat?.default_model && <span className={styles.model}>Generated with {models?.find(m => m.api_name === message.model)?.human_name}</span>}
-                        <button className={styles.copyButton} onClick={() => void navigator.clipboard.writeText(message.contents[0].content)}>
-                            <FontAwesomeIcon icon={faCopy} />
-                        </button>
                 </div>
                 <div className={cx(styles.content)}>
                     {message.role === 'assistant' && <img className={styles.aiLogo} src='/ai-logo.svg' width={50} height={50} alt='AI'/>}
                     <div className={cx(styles.message)}>
-                        {message.contents.map((content, index) => content.type === 'text'
-                            ? <Markdown
-                                children={content.content.replace(/\\\(/g, '$').replace(/\\\)/g, '$').replace(/\\\[/g, '$$').replace(/\\\]/g, '$$')}
-                                remarkPlugins={[remarkGfm, remarkMath]}
-                                rehypePlugins={[rehypeKatex]}
-                                className={styles.markdown}
-                                key={index}
-                                components={{
-                                code(props) {
-                                    const {children, className, ...rest} = props
-                                    const match = /language-(\w+)/.exec(className ?? '')
-                                    return match ? (
-                                    <SyntaxHighlighter
-                                        PreTag="div"
-                                        children={String(children).replace(/\n$/, '')}
-                                        language={match[1]}
-                                        style={materialDark}
-                                    />
-                                    ) : (
-                                    <code {...rest} className={className}>
-                                        {children}
-                                    </code>
-                                    )
-                                }
-                                }}/>
-                            : <img key={index} src={(content.image ? URL.createObjectURL(content.image) : undefined) ?? images[content.content]} alt='Image' style={{maxWidth: '100%', maxHeight: '100%'}}/>
-                        )}
+                        {message.contents.map(renderMessageContent)}
                     </div>
                 </div>
                 
@@ -289,14 +328,17 @@ export default function Chat() {
     }
 
     const messages = chat.messages ?? [];
+    console.log(messages);
 
     if (editing) {
+        console.log(editing);
         return <div className={styles.chatContainer}>
             <ChatOptions 
                 chat={editing} 
                 updateChat={(updateFn) => setEditing(c => c === null ? null : updateFn(c))} // this check is needed for typescript but editing will never actually be null here
                 modelsLoading={modelsAreLoading}
                 models={models}
+                tools={tools}
                 />
             {renderInput()}
         </div>;

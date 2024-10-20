@@ -159,7 +159,6 @@ def handle_stream(chat_id: UUID4, message: schemas.Message, chat: schemas.ChatFu
     try:
         assistant_user = dependencies.get_assistant_user(db=db)
         data.crud.create_message(db=db, message=new_message, user_id=cast(UUID4, assistant_user.id), chat_id=chat_id)
-        stream_manager.reset_chat(chat_id)
         if chat.title == 'New Chat':
             autogen_chat_title(db, chat_id, chat.messages + [new_message], model)
     except Exception as e:
@@ -167,6 +166,7 @@ def handle_stream(chat_id: UUID4, message: schemas.Message, chat: schemas.ChatFu
         stream_manager.reset_chat(chat_id)
         raise HTTPException(status_code=400, detail=str(e))
     finally:
+        print('finished streaming, closing db')
         db.close()
         return
 
@@ -185,15 +185,21 @@ async def send_message_stream(background_tasks: BackgroundTasks, chat_id: UUID4,
     return {'message': 'Stream started'}
     
 @router.websocket('/{chat_id}/stream')
-async def consume_chat_stream(websocket: WebSocket, chat_id: UUID4, token: str = Query(), db: data.Session = Depends(dependencies.get_db)):
+async def consume_chat_stream(websocket: WebSocket, chat_id: UUID4, token: str = Query()):
+    db = next(dependencies.get_db())
     current_user = await dependencies.get_current_user(token=token, db=db, req_type='websocket')
     await dependencies.get_chat(chat_id=chat_id, db=db, current_user=current_user)
+    db.close()
     await websocket.accept()
     try:
         await websocket.send_text(stream_manager.get_full_message(chat_id))
         while True:
-            msg = await stream_manager.consume_message(chat_id)
-            print('sending', msg)
-            await websocket.send_text(msg)
+            if stream_manager.chat_has_message(chat_id):
+                msg = await stream_manager.consume_message(chat_id)
+                await websocket.send_text(msg)
+                if msg == 'END MESSAGE':
+                    stream_manager.reset_chat(chat_id)
+            else:
+                await asyncio.sleep(0.1)
     except WebSocketDisconnect:
         pass

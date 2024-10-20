@@ -1,9 +1,9 @@
-export type Role = 'user' | 'assistant' | 'system';
+export type Role = 'user' | 'assistant' | 'system' | 'tool';
 
-export type MessageContentType = 'text' | 'image' | 'tool_use' | 'tool_result';
+export type MessageContentTypeEnum = 'text' | 'image' | 'tool_call' | 'tool_result';
 
 export interface MessageContent {
-    type: MessageContentType;
+    type: MessageContentTypeEnum;
     content: string | Record<string, string | number> | ToolCall;
 }
 
@@ -22,7 +22,7 @@ export interface ImageMessageContent extends MessageContent {
 export interface ToolResultMessageContent extends MessageContent {
     type: 'tool_result';
     content: Record<string, string | number>;
-    tool_use_id: string;
+    tool_call_id: string;
 }
 
 interface ToolCall {
@@ -30,11 +30,13 @@ interface ToolCall {
     args: Record<string, string | number>;
 }
 
-export interface ToolUseMessageContent extends MessageContent {
-    type: 'tool_use';
+export interface ToolCallMessageContent extends MessageContent {
+    type: 'tool_call';
     content: ToolCall;
-    id: string;
+    tool_call_id: string;
 }
+
+export type MessageContentType = TextMessageContent | ImageMessageContent | ToolCallMessageContent | ToolResultMessageContent;
 
 export interface RangedNumber {
     type: 'float' | 'int';
@@ -66,7 +68,7 @@ export type ModelConfig = Record<string, RangedNumber | OptionedString> & {tools
 
 export interface Message {
     role: Role;
-    contents: (TextMessageContent | ImageMessageContent)[];
+    contents: (TextMessageContent | ImageMessageContent | ToolCallMessageContent | ToolResultMessageContent)[];
     id: string;
     model?: string;
     config?: ModelConfig;
@@ -82,6 +84,7 @@ export interface Chat {
     system_prompt?: string;
     default_model: string;
     config: ModelConfig;
+    tools?: string[];
 }
 
 export const MODEL_API_PROVIDERS = ['openai', 'anthropic'] as const;

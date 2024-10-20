@@ -11,7 +11,7 @@ export default function UserProvider({children}: {children: React.ReactNode}) {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const { data: userQueryRes, isLoading, isError, error, refetch: getUser } = useGetUser(token ?? undefined);
+    const { data: userQueryRes, isLoading, isError, error, refetch: getUser } = useGetUser(token ?? undefined, navigate);
 
     const logout = useCallback(() => {
         localStorage.removeItem('token');

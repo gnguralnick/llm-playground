@@ -1,6 +1,6 @@
 import styles from './chatOptions.module.scss';
 
-import { Chat as ChatType, Model, OptionedString, RangedNumber } from '../../types';
+import { Chat as ChatType, Model, OptionedString, RangedNumber, ToolConfig } from '../../types';
 
 import Select from 'react-select';
 import { useEffect } from 'react';
@@ -11,10 +11,11 @@ interface ChatOptionsProps {
     chat: ChatType;
     updateChat: UpdateChatType;
     models?: Model[];
+    tools?: ToolConfig[];
     modelsLoading: boolean;
 }
 
-export default function ChatOptions({chat, updateChat, models, modelsLoading}: ChatOptionsProps) {
+export default function ChatOptions({chat, updateChat, tools, models, modelsLoading}: ChatOptionsProps) {
 
     const modelOptions = models?.filter(m => !m.requires_key || m.user_has_key).map(m => ({label: m.human_name, value: m.api_name})) ?? [{label: 'Loading', value: 'Loading'}];
     let modelValue = undefined;
@@ -33,8 +34,12 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
                     break;
                 }
             }
+
+            if (model.supports_tools && chat.config.tools !== undefined && chat.config.tools.length > 0 && chat.tools === undefined) {
+                updateChat((v: ChatType): ChatType => ({...v, tools: chat.config.tools?.map(tool => tool.name)}));
+            }
         }
-    }, [models, chat.default_model, chat.config, updateChat]);
+    }, [models, chat.default_model, chat.config, updateChat, chat.tools]);
 
     const renderConfigItem = (key: string, index: number) => {
         const configItem = chat.config[key];
@@ -103,6 +108,22 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
             />
         </div>
     }
+
+    const renderToolConfigItem = (tool: ToolConfig, index: number) => {
+        return <div key={index} className={styles.tool}>
+            <div className={styles.inputGroup}>
+                <label htmlFor={tool.name}>{tool.name}</label>
+                <input type='checkbox' id={tool.name} checked={(chat.tools ?? []).includes(tool.name)} onChange={(e) => {
+                    if (e.target.checked) {
+                        updateChat(c => ({...c, tools: [...(c.tools ?? []), tool.name]}));
+                    } else {
+                        updateChat(c => ({...c, tools: (c.tools ?? []).filter(t => t !== tool.name)}));
+                    }
+                }} />
+            </div>
+            <p>{tool.description}</p>
+        </div>
+    }
     
     return (
         <div className={styles.chatOptions}>
@@ -132,6 +153,10 @@ export default function ChatOptions({chat, updateChat, models, modelsLoading}: C
                     />
                 </div>
                 {models && Object.keys(chat.config).map(renderConfigItem)}
+                {tools && <div className={styles.formGroup}>
+                    <h2>Tools</h2>
+                    {tools.map(renderToolConfigItem)}
+                </div>}
             </form>
 
         </div>

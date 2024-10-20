@@ -85,4 +85,25 @@
             }
         }
     }
+
+    .formGroup {
+        h2 {
+            margin: 0;
+        }
+    }
+
+    .tool {
+        display: flex;
+        flex-direction: column;
+
+        .inputGroup {
+            display: flex;
+            flex-direction: row;
+            gap: 1rem;
+        }
+
+        p {
+            margin: 0;
+        }
+    }
 }
