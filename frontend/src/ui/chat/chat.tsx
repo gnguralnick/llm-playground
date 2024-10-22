@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './chat.module.scss';
 import clsx from 'clsx';
 import { ArrowUp } from '../assets/icons';
@@ -11,7 +11,7 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { backendFetch, useEditChat, useGetChat, useGetModels, useGetTools, useRefreshSidebar, useSendMessage, useSendMessageStream, useSubscribeToChat, useUser } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
-import { Chat as ChatType, ImageMessageContent, MessageContent, MessageView, TextMessageContent, ToolCallMessageContent, ToolResultMessageContent } from '../../types';
+import { Chat as ChatType, ImageMessageContent, MessageContent, MessageView, TextMessageContent, ToolCallMessageContent } from '../../types';
 import { useQueryClient } from 'react-query';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faImage } from '@fortawesome/free-solid-svg-icons';
@@ -55,6 +55,8 @@ export default function Chat() {
             node.scrollIntoView({behavior: 'smooth', block: 'end', inline: 'nearest'});
         }
     }, []);
+
+    const [toolResultsShown, setToolResultsShown] = useState<Record<string, boolean>>({});
     
     const { chatId } = useParams();
 
@@ -68,7 +70,7 @@ export default function Chat() {
     const navigate = useNavigate();
 
     const setEditingChat = (chat: ChatType) => {
-        setEditing({...chat, system_prompt: chat.messages?.find(m => m.role === 'system')?.contents[0].content});
+        setEditing({...chat, system_prompt: (chat.messages?.find(m => m.role === 'system')?.contents[0] as TextMessageContent).content});
     }
 
     useEffect(() => {
@@ -210,6 +212,12 @@ export default function Chat() {
             return <img key={index} src={(imageContent.image ? URL.createObjectURL(imageContent.image) : undefined) ?? images[imageContent.content]} alt='Image' style={{maxWidth: '100%', maxHeight: '100%'}}/>
         } else if (content.type === 'tool_call') {
             const toolCallContent = content as ToolCallMessageContent;
+            if (!(toolCallContent.tool_call_id in toolResultsShown)) {
+                setToolResultsShown(tr => (toolCallContent.tool_call_id in tr 
+                    ? tr 
+                    : {...tr, [toolCallContent.tool_call_id]: false}
+                )); 
+            }
             let toolResult = undefined;
             for (const message of messages.filter(m => m.role === 'tool')) {
                 for (const content of message.contents.filter(c => c.type === 'tool_result')) {
@@ -219,7 +227,6 @@ export default function Chat() {
                     }
                 }
             }
-            console.log(toolResult);
             return <div className={styles.toolCallCtr}>
                 <div key={index} className={styles.toolCall}>
                     <h3 className={styles.name}>Tool Call: {toolCallContent.content.name}</h3>
@@ -229,10 +236,18 @@ export default function Chat() {
                         <span className={styles.argVal}>{arg[1]}</span>
                     </div>)}</div>
                 </div>
-                {toolResult && <div key={index} className={styles.toolResult}>
-                <h3>Result</h3>
-                    <pre>{JSON.stringify(toolResult.content, null, 2)}</pre>
-                </div>}
+                {toolResult && 
+                <>
+                    <button className={styles.showResultButton} onClick={() => setToolResultsShown(tr => ({...tr, [toolCallContent.tool_call_id]: !tr[toolCallContent.tool_call_id]}))}>
+                        {toolResultsShown[toolCallContent.tool_call_id] ? 'Hide' : 'Show'} Result
+                    </button>
+                    <div key={index} className={styles.toolResult + ' ' + (toolResultsShown[toolCallContent.tool_call_id] ? styles.show : '')}>
+                        <h3>Result</h3>
+                        <pre>{JSON.stringify(toolResult.content, null, 2)}</pre>
+                    </div>
+                </>
+                
+                }
             </div>;
         }
     }

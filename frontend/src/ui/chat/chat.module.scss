@@ -154,13 +154,22 @@
         overflow: auto;
     }
 
+    .showResultButton {
+        margin-bottom: 0.5rem;
+        width: 100%;
+    }
+
     .toolResult {
-        display: flex;
+        display: none;
         flex-direction: column;
         padding: 1rem;
         border-radius: 10px;
         background-color: #ececec3a;
         overflow: auto;
+
+        &.show {
+            display: flex;
+        }
         
 
         * {

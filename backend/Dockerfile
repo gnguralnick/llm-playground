@@ -14,6 +14,8 @@ RUN chmod +x /entrypoint.sh
 
 COPY . .
 
+COPY .env.production .env
+
 EXPOSE 8000
 
 ENTRYPOINT ["/entrypoint.sh"]

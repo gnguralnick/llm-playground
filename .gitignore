@@ -29,3 +29,4 @@ backend/**/__pycache__
 backend/app/images
 
 **/.env
+**/.env.production

@@ -1,8 +1,7 @@
 #!/bin/sh
 
-cd /app/app/data
+cd /app
 
 alembic upgrade head
 
-cd /app
 fastapi run app/main.py --port 8000

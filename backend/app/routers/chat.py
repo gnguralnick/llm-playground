@@ -7,7 +7,6 @@ from pydantic import UUID4
 from app import data, schemas, dependencies, chat_models
 from app.schemas.model_config import ModelConfigWithTools
 from app.util import Role
-from app.tools import get_tools
 from typing import cast
 from app.chat_stream import ChatStreamManager
 import asyncio
@@ -111,8 +110,6 @@ def handle_tool_calls(message: schemas.Message, user_id: UUID4, chat_id: UUID4, 
 @router.post('/{chat_id}/', response_model=schemas.MessageView)
 def send_message(chat_id: UUID4, current_user: schemas.User = Depends(dependencies.get_current_user), message: schemas.Message = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, schemas.ModelConfig] = Depends(dependencies.get_model), assistant_user = Depends(dependencies.get_assistant_user), tools = Depends(dependencies.get_tools)):
     chat: schemas.ChatFull = schemas.ChatFull.model_validate(db_chat, from_attributes=True)
-    
-    print(chat.config.tools)
     
     model, _ = model_with_config
     

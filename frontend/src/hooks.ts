@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { Message, Chat, Model, MessageView, User, ModelAPIKey, ToolConfig } from './types';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import UserContext, { UserContextType } from './context/userContext';
 
 export async function backendFetch(url: string, options?: RequestInit, token?: string): Promise<Response> {
