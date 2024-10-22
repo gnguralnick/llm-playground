@@ -75,12 +75,12 @@ async def login_for_access_token(
 def read_users_me(current_user: schemas.User = Depends(dependencies.get_current_user)):
     return current_user
 
-@router.get('/me/api_key/', response_model=list[schemas.ModelAPIKeyBase])
+@router.get('/me/api_key/', response_model=list[schemas.APIKeyBase])
 def read_api_keys(db: data.Session = Depends(dependencies.get_db), current_user: schemas.User = Depends(dependencies.get_current_user)):
     return data.crud.get_user_api_providers(db=db, user_id=current_user.id)
 
-@router.post('/me/api_key/', response_model=schemas.ModelAPIKeyBase)
-def create_api_key(api_key: schemas.ModelAPIKeyCreate, db: data.Session = Depends(dependencies.get_db), current_user: schemas.User = Depends(dependencies.get_current_user)):
+@router.post('/me/api_key/', response_model=schemas.APIKeyBase)
+def create_api_key(api_key: schemas.APIKeyCreate, db: data.Session = Depends(dependencies.get_db), current_user: schemas.User = Depends(dependencies.get_current_user)):
     return data.crud.create_api_key(db=db, api_key=api_key, user_id=current_user.id)
 
 @router.delete('/me/api_key/{provider}')
@@ -88,6 +88,6 @@ def delete_api_key(provider: schemas.ModelAPI, db: data.Session = Depends(depend
     data.crud.delete_api_key(db=db, user_id=current_user.id, provider=provider)
     return {'message': 'API key deleted', }
 
-@router.put('/me/api_key/{provider}', response_model=schemas.ModelAPIKeyBase)
-def update_api_key(api_key: schemas.ModelAPIKeyCreate, db: data.Session = Depends(dependencies.get_db), current_user: schemas.User = Depends(dependencies.get_current_user)):
+@router.put('/me/api_key/{provider}', response_model=schemas.APIKeyBase)
+def update_api_key(api_key: schemas.APIKeyCreate, db: data.Session = Depends(dependencies.get_db), current_user: schemas.User = Depends(dependencies.get_current_user)):
     return data.crud.update_api_key(db=db, user_id=current_user.id, api_key=api_key)

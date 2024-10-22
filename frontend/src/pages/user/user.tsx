@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAddAPIKey, useDeleteAPIKey, useGetAPIKeys, useUser } from "../../hooks";
 import Sidebar from "../../ui/sidebar/sidebar";
 import styles from './user.module.scss';
-import { MODEL_API_PROVIDERS } from "../../types";
+import { MODEL_API_PROVIDERS, TOOL_API_PROVIDERS } from "../../types";
 
 export default function User() {
 
@@ -59,7 +59,10 @@ export default function User() {
                 </form>
                 {!isLoading && data && <>
                     <h1>API Keys</h1>
+                    <h2>Model APIs</h2>
                     {MODEL_API_PROVIDERS.map(renderAPIInput)}
+                    <h2>Tool APIs</h2>
+                    {TOOL_API_PROVIDERS.map(renderAPIInput)}
                 </>}
             </div>
         </div>

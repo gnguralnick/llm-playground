@@ -4,7 +4,7 @@ from fastapi import Depends, Form, HTTPException, UploadFile, WebSocketException
 from fastapi.security import OAuth2PasswordBearer
 import jwt
 from pydantic import UUID4
-from app import data, schemas, chat_models
+from app import data, schemas, chat_models, tools
 from app.config import config
 from typing import cast
 
@@ -82,6 +82,21 @@ async def get_model(message: schemas.Message = Depends(get_message), chat: data.
     model = model_type(api_key=cast(str, key), config=config) # construct model instance, using API key if required
     message.model = None # user messages should not have a model; this was just for the model selection
     return model, config
+
+async def get_tools(db: data.Session = Depends(get_db), current_user = Depends(get_current_user)) -> dict[str, schemas.ToolConfig]:
+    res = {}
+    for tool_name in tools.get_tools():
+        tool = tools.get_tools()[tool_name]
+        if not tool.requires_api_key:
+            res[tool_name] = tool
+        elif tool.api_provider is None:
+            raise ValueError(f'Tool {tool_name} requires an API key but no provider is specified')
+        else:
+            api_key = data.crud.get_api_key(db, current_user.id, tool.api_provider)
+            if api_key is not None:
+                tool.set_api_key(cast(str, api_key.key))
+                res[tool_name] = tool
+    return res
 
 def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: schemas.Message = Depends(get_message)) -> schemas.Message:
     """Save image files to disk and update message content to include file paths

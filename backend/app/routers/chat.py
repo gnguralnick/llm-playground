@@ -5,7 +5,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, W
 from fastapi.responses import FileResponse
 from pydantic import UUID4
 from app import data, schemas, dependencies, chat_models
-from app.util import Role, ModelConfig
+from app.schemas.model_config import ModelConfigWithTools
+from app.util import Role
 from app.tools import get_tools
 from typing import cast
 from app.chat_stream import ChatStreamManager
@@ -37,16 +38,28 @@ def read_image(chat_id: UUID4, image_path: str):
     return f'images/{chat_id}/{image_path}'
 
 @router.put('/{chat_id}', response_model=schemas.ChatView)
-def update_chat(chat: schemas.ChatCreate, db_chat: data.models.Chat = Depends(dependencies.get_chat), db: data.Session = Depends(dependencies.get_db)):
+def update_chat(chat: schemas.ChatCreate, db_chat: data.models.Chat = Depends(dependencies.get_chat), db: data.Session = Depends(dependencies.get_db), tools = Depends(dependencies.get_tools)):
     old_chat = schemas.ChatFull.model_validate(db_chat, from_attributes=True)
-    if chat.config is None:
-        chat.config = old_chat.config
-    for tool_name in chat.tools:
-        if get_tools().get(tool_name) is None:
-            raise HTTPException(status_code=400, detail=f'Tool {tool_name} not found')
-        if not hasattr(chat.config, 'tools'):
-            raise HTTPException(status_code=400, detail='Chat model does not support tools')
-        chat.config.tools.append(get_tools()[tool_name])
+    if chat.default_model != old_chat.default_model:
+        # if default model is changed, completely overwrite chat config
+        default_model_config = chat_models.get_chat_model(chat.default_model).config_type()
+        if chat.config is None:
+            chat.config = default_model_config
+        return data.crud.update_chat(db=db, chat_id=cast(UUID4, db_chat.id), chat=chat)
+    
+    if isinstance(old_chat.config, ModelConfigWithTools) and isinstance(chat.config, ModelConfigWithTools) and [tool.name for tool in chat.config.tools] != chat.tools:
+        kept_tools = []
+        for tool in old_chat.config.tools:
+            if tool.name in chat.tools:
+                kept_tools.append(tool)
+        chat.config.tools = kept_tools
+        for tool_name in chat.tools:
+            if tool_name not in tools:
+                raise HTTPException(status_code=400, detail=f'Tool {tool_name} not found')
+            if not hasattr(chat.config, 'tools'):
+                raise HTTPException(status_code=400, detail='Chat model does not support tools')
+            chat.config.tools.append(tools[tool_name])
+        assert [tool.name for tool in chat.config.tools] == chat.tools
     return data.crud.update_chat(db=db, chat_id=cast(UUID4, db_chat.id), chat=chat)
 
 @router.delete('/{chat_id}')
@@ -77,17 +90,17 @@ def autogen_chat_title(db: data.Session, chat_id: UUID4, messages: list[schemas.
     
     return schemas.chat.Chat.model_validate(db_chat, from_attributes=True)
 
-def handle_tool_calls(message: schemas.Message, user_id: UUID4, chat_id: UUID4, db: data.Session):
+def handle_tool_calls(message: schemas.Message, user_id: UUID4, chat_id: UUID4, db: data.Session, tools: dict[str, schemas.ToolConfig]) -> data.models.Message:
     print('handling tool calls')
     tool_result_message = schemas.MessageBuilder(role=Role.TOOL)
     for content in message.contents:
         if isinstance(content, schemas.ToolCallMessageContent):
             tool_call = content.content
             print('tool call', tool_call)
-            tool = get_tools().get(tool_call.name)
+            tool = tools.get(tool_call.name)
             if tool is None:
                 raise HTTPException(status_code=400, detail=f'Tool {tool_call.name} not found')
-            tool_result = tool.func(**tool_call.args)
+            tool_result = tool(**tool_call.args)
             print('tool result', tool_result)
             tool_result_message.add_tool_result(tool_result, tool_call_id=content.tool_call_id)
     
@@ -96,8 +109,10 @@ def handle_tool_calls(message: schemas.Message, user_id: UUID4, chat_id: UUID4, 
     return db_msg
 
 @router.post('/{chat_id}/', response_model=schemas.MessageView)
-def send_message(chat_id: UUID4, current_user: schemas.User = Depends(dependencies.get_current_user), message: schemas.Message = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, ModelConfig] = Depends(dependencies.get_model), assistant_user = Depends(dependencies.get_assistant_user)):
+def send_message(chat_id: UUID4, current_user: schemas.User = Depends(dependencies.get_current_user), message: schemas.Message = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, schemas.ModelConfig] = Depends(dependencies.get_model), assistant_user = Depends(dependencies.get_assistant_user), tools = Depends(dependencies.get_tools)):
     chat: schemas.ChatFull = schemas.ChatFull.model_validate(db_chat, from_attributes=True)
+    
+    print(chat.config.tools)
     
     model, _ = model_with_config
     
@@ -114,7 +129,7 @@ def send_message(chat_id: UUID4, current_user: schemas.User = Depends(dependenci
             db_msgs.append(msg)
             if not response_msg.has_tool_calls():
                 break
-            db_msg = handle_tool_calls(response_msg, current_user.id, chat_id, db)
+            db_msg = handle_tool_calls(response_msg, current_user.id, chat_id, db, tools)
             db_msgs.append(db_msg)
             tool_msg = schemas.Message.model_validate(db_msg, from_attributes=True)
             messages.append(tool_msg)
@@ -171,7 +186,7 @@ def handle_stream(chat_id: UUID4, message: schemas.Message, chat: schemas.ChatFu
         return
 
 @router.post('/{chat_id}/stream/', response_model=dict)
-async def send_message_stream(background_tasks: BackgroundTasks, chat_id: UUID4, message = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, ModelConfig] = Depends(dependencies.get_model)):
+async def send_message_stream(background_tasks: BackgroundTasks, chat_id: UUID4, message = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, schemas.ModelConfig] = Depends(dependencies.get_model)):
     chat: schemas.ChatFull = schemas.ChatFull.model_validate(db_chat, from_attributes=True)
     model, _ = model_with_config
 

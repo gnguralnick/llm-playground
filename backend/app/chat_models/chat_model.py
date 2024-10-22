@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from app.util import ModelAPI, ModelConfig, ModelConfigWithTools
+from app.util import ModelAPI
+from app.schemas.model_config import ModelConfig, ModelConfigWithTools
 
 from typing import TYPE_CHECKING, Sequence
 

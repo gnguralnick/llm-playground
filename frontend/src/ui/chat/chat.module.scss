@@ -55,6 +55,7 @@
     display: flex;
     flex-direction: column;
     margin-top: 1rem;
+    overflow-x: auto;
 
     .info {
         width: 100%;
@@ -67,12 +68,14 @@
         gap: 10px;
         width: 100%;
         flex-direction: column;
+        overflow-x: auto;
     }
 
     .message {
         padding: 10px;
         border-radius: 10px;
-        max-width: 70%;
+        flex: 1;
+        overflow-x: auto;
 
         
 
@@ -113,7 +116,6 @@
         .message, .messageLoading {
             padding-left: 0;
             align-self: flex-start;
-            max-width: 100%;
         }
 
         .toolCall {
@@ -149,6 +151,7 @@
 
     .toolCallCtr {
         margin-bottom: 1rem;
+        overflow: auto;
     }
 
     .toolResult {
@@ -157,9 +160,15 @@
         padding: 1rem;
         border-radius: 10px;
         background-color: #ececec3a;
+        overflow: auto;
+        
 
         * {
             margin: 0;
+        }
+
+        pre {
+            overflow-x: auto;
         }
     }
 }

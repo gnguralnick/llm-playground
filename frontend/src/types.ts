@@ -87,7 +87,9 @@ export interface Chat {
     tools?: string[];
 }
 
-export const MODEL_API_PROVIDERS = ['openai', 'anthropic'] as const;
+export const MODEL_API_PROVIDERS = ['OPENAI', 'ANTHROPIC'] as const;
+
+export const TOOL_API_PROVIDERS = ['TAVILY'] as const;
 
 export interface ModelAPIKey {
     provider: typeof MODEL_API_PROVIDERS[number];

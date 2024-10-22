@@ -1,5 +1,6 @@
 import anthropic
-from app.util import ModelConfig, RangedFloat, RangedInt
+from app.util import RangedFloat, RangedInt
+from app.schemas.model_config import ModelConfig
 
 
 class AnthropicConfig(ModelConfig):

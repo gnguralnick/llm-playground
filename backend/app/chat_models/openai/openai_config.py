@@ -1,4 +1,5 @@
-from app.util import ModelConfigWithTools, RangedFloat, OptionedString, RangedInt
+from app.util import RangedFloat, OptionedString, RangedInt
+from app.schemas.model_config import ModelConfigWithTools
 
 
 class OpenAIConfig(ModelConfigWithTools):

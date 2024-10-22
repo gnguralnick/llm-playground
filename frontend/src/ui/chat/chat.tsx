@@ -151,7 +151,7 @@ export default function Chat() {
             contents.push({type: 'text', content: msg});
 
 
-            if (model.supports_streaming && chat.config.tools?.length === 0) {
+            if (model.supports_streaming && editedChat.config.tools?.length === 0) {
                 setStreamingMessage('');
                 await sendMessageStream({role: 'user', contents: contents});
             } else {
