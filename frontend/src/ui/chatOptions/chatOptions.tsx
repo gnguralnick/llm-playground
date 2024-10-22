@@ -30,6 +30,9 @@ export default function ChatOptions({chat, updateChat, tools, models, modelsLoad
             if (!model) return;
             for (const key of Object.keys(chat.config)) {
                 if (model.config[key] === undefined) {
+                    // if the chat has a key that the model doesn't, reset the chat's config to the model's default config
+                    // this could be improved by only removing the key that doesn't match, though different models may have different meanings for the same key
+                    // so it's probably best to just reset the whole config
                     updateChat((v: ChatType): ChatType => ({...v, config: model.config}));
                     break;
                 }
@@ -37,6 +40,9 @@ export default function ChatOptions({chat, updateChat, tools, models, modelsLoad
 
             if (model.supports_tools && chat.config.tools !== undefined && chat.config.tools.length > 0 && chat.tools === undefined) {
                 updateChat((v: ChatType): ChatType => ({...v, tools: chat.config.tools?.map(tool => tool.name)}));
+            } else if (!model.supports_tools && chat.tools !== undefined) {
+                // remove tools from chat if the model doesn't support them
+                updateChat((v: ChatType): ChatType => ({...v, tools: undefined}));
             }
         }
     }, [models, chat.default_model, chat.config, updateChat, chat.tools]);
@@ -153,7 +159,7 @@ export default function ChatOptions({chat, updateChat, tools, models, modelsLoad
                     />
                 </div>
                 {models && Object.keys(chat.config).map(renderConfigItem)}
-                {tools && <div className={styles.formGroup}>
+                {models?.find(m => m.api_name === chat.default_model)?.supports_tools && tools && <div className={styles.formGroup}>
                     <h2>Tools</h2>
                     {tools.map(renderToolConfigItem)}
                 </div>}
