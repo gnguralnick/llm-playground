@@ -15,6 +15,7 @@ import { Chat as ChatType, FileMessageContent, ImageMessageContent, MessageConte
 import { useQueryClient } from 'react-query';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faImage } from '@fortawesome/free-solid-svg-icons';
+import { faFile } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const cx = clsx.bind(styles);
@@ -222,7 +223,7 @@ export default function Chat() {
             return <img key={index} src={(imageContent.image ? URL.createObjectURL(imageContent.image) : undefined) ?? files[imageContent.content]} alt='Image' style={{maxWidth: '100%', maxHeight: '100%'}}/>
         } else if (content.type === 'file') {
             const fileContent = content as FileMessageContent;
-            return <a key={index} href={files[fileContent.content]} target='_blank' rel='noreferrer'>{fileContent.content}</a>;
+            return <a key={index} href={files[fileContent.content]} target='_blank' rel='noreferrer'>{fileContent.content.split('/')[fileContent.content.split('/').length - 1]}</a>;
         } else if (content.type === 'tool_call') {
             const toolCallContent = content as ToolCallMessageContent;
             if (!(toolCallContent.tool_call_id in toolResultsShown)) {
@@ -338,7 +339,7 @@ export default function Chat() {
                     />
                 </label>}
                 <label htmlFor='fileInput' className={styles.imageInputLabel} onClick={() => fileInputRef.current?.click()}>
-                    <FontAwesomeIcon icon={faCopy} />
+                    <FontAwesomeIcon icon={faFile} />
                     <input
                         type='file'
                         className={styles.imageInput}
