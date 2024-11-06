@@ -11,7 +11,7 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { backendFetch, useEditChat, useGetChat, useGetModels, useGetTools, useRefreshSidebar, useSendMessage, useSendMessageStream, useSubscribeToChat, useUser } from '../../hooks';
 import ChatOptions from '../chatOptions/chatOptions';
-import { Chat as ChatType, ImageMessageContent, MessageContent, MessageView, TextMessageContent, ToolCallMessageContent } from '../../types';
+import { Chat as ChatType, FileMessageContent, ImageMessageContent, MessageContent, MessageView, TextMessageContent, ToolCallMessageContent } from '../../types';
 import { useQueryClient } from 'react-query';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faImage } from '@fortawesome/free-solid-svg-icons';
@@ -45,11 +45,16 @@ function ChatLoading() {
 export default function Chat() {
     const {token, user} = useUser();
     const [input, setInput] = useState('');
-    const [imageInput, setImageInput] = useState<File | null>(null);
+
+    const [imageInputs, setImageInputs] = useState<File[]>([]);
     const imageInputRef = useRef<HTMLInputElement>(null);
+
+    const [fileInputs, setFileInputs] = useState<File[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const [showSystem, setShowSystem] = useState(false);
     const [editing, setEditing] = useState<ChatType | null>(null);
-    const [images, setImages] = useState<Record<string, string>>({});
+    const [files, setFiles] = useState<Record<string, string>>({});
     const scrollToMessage = useCallback((node: HTMLDivElement) => {
         if (node !== null) {
             node.scrollIntoView({behavior: 'smooth', block: 'end', inline: 'nearest'});
@@ -93,21 +98,21 @@ export default function Chat() {
     }, [models, navigate]);
 
     useEffect(() => {
-        async function fetchImages() {
+        async function fetchFiles() {
             if (chat?.messages) {
                 for (const message of chat.messages) {
-                    const imageContents = message.contents.filter(c => c.type === 'image');
-                    const newImages = await imageContents.reduce(async (acc, content) => {
-                        const response = await backendFetch('/' + content.content, undefined, token);
+                    const fileContents = message.contents.filter(c => c.type === 'image' || c.type === 'file');
+                    const newFiles = await fileContents.reduce(async (acc, content) => {
+                        const response = await backendFetch('/chat/' + content.content, undefined, token);
                         const blob = await response.blob();
                         const url = URL.createObjectURL(blob);
                         return {...(await acc), [content.content]: url};
                     }, Promise.resolve({}) as Promise<Record<string, string>>);
-                    setImages(i => ({...i, ...newImages}));
+                    setFiles(i => ({...i, ...newFiles}));
                 }
             }
         }
-        void fetchImages();
+        void fetchFiles();
     }, [chat, token]);
 
     const sendMessageStream = useSendMessageStream(chatId!);
@@ -145,11 +150,16 @@ export default function Chat() {
                 return;
             }
 
-            const contents: (TextMessageContent | ImageMessageContent)[] = [];
-            if (imageInput) {
+            const contents: (TextMessageContent | ImageMessageContent | FileMessageContent)[] = [];
+            imageInputs.forEach(imageInput => {
                 contents.push({type: 'image', content: imageInput.name, image: imageInput, image_type: imageInput.type});
-                setImageInput(null);
-            }
+            });
+            fileInputs.forEach(fileInput => {
+                contents.push({type: 'file', content: fileInput.name, file: fileInput, image_type: fileInput.type});
+            });
+
+            setImageInputs([]);
+            setFileInputs([]);
             contents.push({type: 'text', content: msg});
 
 
@@ -209,7 +219,10 @@ export default function Chat() {
             </div>
         } else if (content.type === 'image') {
             const imageContent = content as ImageMessageContent;
-            return <img key={index} src={(imageContent.image ? URL.createObjectURL(imageContent.image) : undefined) ?? images[imageContent.content]} alt='Image' style={{maxWidth: '100%', maxHeight: '100%'}}/>
+            return <img key={index} src={(imageContent.image ? URL.createObjectURL(imageContent.image) : undefined) ?? files[imageContent.content]} alt='Image' style={{maxWidth: '100%', maxHeight: '100%'}}/>
+        } else if (content.type === 'file') {
+            const fileContent = content as FileMessageContent;
+            return <a key={index} href={files[fileContent.content]} target='_blank' rel='noreferrer'>{fileContent.content}</a>;
         } else if (content.type === 'tool_call') {
             const toolCallContent = content as ToolCallMessageContent;
             if (!(toolCallContent.tool_call_id in toolResultsShown)) {
@@ -300,10 +313,14 @@ export default function Chat() {
         const model = models?.find(m => m.api_name === (editing ?? chat)?.default_model);
         return <div className={styles.inputContainerCtr}>
             <div className={styles.uploads}>
-                {imageInput && <div className={styles.upload}>
-                    <img src={URL.createObjectURL(imageInput)} alt='Image' style={{maxWidth: '10%', maxHeight: '10%'}}/>
-                    <button onClick={() => setImageInput(null)}>X</button>
-                </div>}
+                {imageInputs.map((imgInput, index) => <div className={styles.upload} key={index}>
+                    <img src={URL.createObjectURL(imgInput)} alt='Image' style={{maxWidth: '100%', maxHeight: '100%'}}/>
+                    <button onClick={() => setImageInputs(prev => prev.filter(i => i.name != imgInput.name))}>X</button>
+                </div>)}
+                {fileInputs.map((fileInput, index) => <div className={styles.upload} key={index}>
+                    <a href={URL.createObjectURL(fileInput)} target='_blank' rel='noreferrer'>{fileInput.name}</a>
+                    <button onClick={() => setFileInputs(prev => prev.filter(i => i.name != fileInput.name))}>X</button>
+                </div>)}
             </div>
             <div className={styles.inputContainer}>
                 {model && model.supports_images && <label htmlFor='imageInput' className={styles.imageInputLabel} onClick={() => imageInputRef.current?.click()}>
@@ -316,10 +333,23 @@ export default function Chat() {
                         onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            setImageInput(file);
+                            setImageInputs(prev => [...prev, file]);
                         }}
                     />
                 </label>}
+                <label htmlFor='fileInput' className={styles.imageInputLabel} onClick={() => fileInputRef.current?.click()}>
+                    <FontAwesomeIcon icon={faCopy} />
+                    <input
+                        type='file'
+                        className={styles.imageInput}
+                        ref={fileInputRef}
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setFileInputs(prev => [...prev, file]);
+                        }}
+                    />
+                </label>
                 <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}

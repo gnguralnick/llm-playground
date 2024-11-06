@@ -9,7 +9,7 @@ import logging
 
 from typing import TYPE_CHECKING, cast
 if TYPE_CHECKING:
-    from app.schemas import Message, TextMessageContent
+    from app.schemas import Message
 
 class AnthropicModel(ImageChatModel, StreamingChatModel):
     
@@ -38,15 +38,19 @@ class AnthropicModel(ImageChatModel, StreamingChatModel):
                 }
                 for c in m.contents:
                     content = {}
-                    if isinstance(c, 'TextMessageContent'):
+                    if isinstance(c, TextMessageContent):
                         content['type'] = 'text'
                         content['text'] = c.content
-                    elif isinstance(c, 'ImageMessageContent'):
+                    elif isinstance(c, ImageMessageContent) and c.is_image():
                         content['type'] = 'image'
                         content['source'] = {}
                         content['source']['type'] = 'base64'
                         content['source']['media_type'] = c.image_type
                         content['source']['data'] = c.get_image()
+                    elif isinstance(c, ImageMessageContent):
+                        content = {}
+                        content['type'] = 'text'
+                        content['text'] = c.get_file_content()
                     else:
                         logging.warning(f'Unsupported content type {type(c)} for Anthropic')
                         continue
@@ -57,11 +61,11 @@ class AnthropicModel(ImageChatModel, StreamingChatModel):
     def chat(self, messages: Sequence['Message']) -> 'Message':
         system_msg = [m for m in messages if m.role == Role.SYSTEM]
         system_msg = system_msg[0] if system_msg else None
-        system_msg_contents: 'TextMessageContent | None' = cast(TextMessageContent, system_msg.contents[0]) if system_msg is not None else None
+        system_msg_content: str | None = cast(str, system_msg.contents[0].content) if system_msg is not None else None
         response = self._client.messages.create(
             model=self.api_name,
             messages=self.process_messages(messages),
-            system=system_msg_contents.content if system_msg_contents is not None else anthropic.NOT_GIVEN,
+            system=system_msg_content if system_msg_content is not None else anthropic.NOT_GIVEN,
             **self.config.dump_values()
         )
         
@@ -75,11 +79,11 @@ class AnthropicModel(ImageChatModel, StreamingChatModel):
     def chat_stream(self, messages: Sequence['Message']) -> Generator[str, None, None]:
         system_msg = [m for m in messages if m.role == Role.SYSTEM]
         system_msg = system_msg[0] if system_msg else None
-        system_msg_contents: 'TextMessageContent | None' = cast(TextMessageContent, system_msg.contents[0]) if system_msg is not None else None
+        system_msg_content: str | None = cast(str, system_msg.contents[0].content) if system_msg is not None else None
         with self._client.messages.stream(
             model=self.api_name,
             messages=self.process_messages(messages),
-            system=system_msg_contents.content if system_msg_contents is not None else anthropic.NOT_GIVEN,
+            system=system_msg_content if system_msg_content is not None else anthropic.NOT_GIVEN,
             **self.config.dump_values()
         ) as stream:
             for text in stream.text_stream:

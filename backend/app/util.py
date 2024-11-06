@@ -16,6 +16,7 @@ class Role(str, Enum):
 class MessageContentType(str, Enum):
     TEXT = 'text'
     IMAGE = 'image'
+    FILE = 'file'
     TOOL_CALL = 'tool_call'
     TOOL_RESULT = 'tool_result'
     

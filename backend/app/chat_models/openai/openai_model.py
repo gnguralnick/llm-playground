@@ -47,13 +47,17 @@ class OpenAIModel(ImageChatModel, StreamingChatModel, ToolChatModel):
                     content = {}
                     content['type'] = 'text'
                     content['text'] = c.content
-                elif isinstance(c, ImageMessageContent):
+                elif isinstance(c, ImageMessageContent) and c.is_image():
                     content = {}
                     content['type'] = 'image_url'
                     content['image_url'] = {
                         'url': f"data:image/{c.image_type};base64,{c.get_image()}",
                         'detail': self.config.image_detail.val
                     }
+                elif isinstance(c, ImageMessageContent):
+                    content = {}
+                    content['type'] = 'text'
+                    content['text'] = c.get_file_content()
                 elif isinstance(c, ToolCallMessageContent):
                     if msg['tool_calls'] is None:
                         msg['tool_calls'] = []

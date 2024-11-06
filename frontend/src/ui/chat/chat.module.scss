@@ -237,3 +237,14 @@
         display: none;
     }
 }
+
+.uploads {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+
+    .upload {
+        width: fit-content;
+        max-width: 10%;
+    }
+}

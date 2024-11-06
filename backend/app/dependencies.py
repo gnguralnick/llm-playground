@@ -98,8 +98,8 @@ async def get_tools(db: data.Session = Depends(get_db), current_user = Depends(g
                 res[tool_name] = tool
     return res
 
-def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: schemas.Message = Depends(get_message)) -> schemas.Message:
-    """Save image files to disk and update message content to include file paths
+def save_files(chat_id: UUID4, files: list[UploadFile] | None = None, message: schemas.Message = Depends(get_message)) -> schemas.Message:
+    """Save files to disk and update message content to include file paths
 
     Args:
         chat_id (UUID4): The chat ID to which the message belongs / will belong
@@ -107,28 +107,28 @@ def save_images(chat_id: UUID4, files: list[UploadFile] | None = None, message: 
         message (schemas.MessageCreate, optional): The message to process. Defaults to Depends(get_message).
 
     Raises:
-        HTTPException: If the message contains an image content but no file is provided whose filename matches the content
+        HTTPException: If the message contains an file content but no file is provided whose filename matches the content
 
     Returns:
-        schemas.MessageCreate: The message with updated content, where image content is replaced with local file paths
+        schemas.MessageCreate: The message with updated content, where file content is replaced with local file paths
     """
     for c in message.contents:
         if isinstance(c, schemas.ImageMessageContent):
             if files is None:
-                raise HTTPException(status_code=400, detail='Image content requires a file')
-            image = next((f for f in files if f.filename == c.content), None)
-            if image is None:
-                raise HTTPException(status_code=400, detail='Image content file not found')
-            if image.content_type is None:
-                raise HTTPException(status_code=400, detail='Image content file type not provided')
-            image_data = image.file.read()
+                raise HTTPException(status_code=400, detail='File content requires a file')
+            file = next((f for f in files if f.filename == c.content), None)
+            if file is None:
+                raise HTTPException(status_code=400, detail='File content file not found')
+            if file.content_type is None:
+                raise HTTPException(status_code=400, detail='File content file type not provided')
+            file_data = file.file.read()
             # save image to disk and set content to file path
-            if not os.path.exists(f'images/{chat_id}'):
-                os.makedirs(f'images/{chat_id}')
-            with open(f'images/{chat_id}/{c.content}', 'wb') as f:
-                f.write(image_data)
-            c.content = f'images/{chat_id}/{c.content}'
-            c.image_type = image.content_type
+            if not os.path.exists(f'uploads/{chat_id}'):
+                os.makedirs(f'uploads/{chat_id}')
+            with open(f'uploads/{chat_id}/{c.content}', 'wb') as f:
+                f.write(file_data)
+            c.content = f'uploads/{chat_id}/{c.content}'
+            c.image_type = file.content_type
     return message
 
 def get_system_user(db: data.Session = Depends(get_db)) -> data.models.User:

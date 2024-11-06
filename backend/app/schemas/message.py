@@ -1,5 +1,5 @@
 from pydantic import BaseModel, UUID4, field_validator
-from util import Role
+from util import MessageContentType, Role
 import datetime
 from app.chat_models.model_config import model_config_type
 from app.schemas.message_content import MessageContent, ToolCall, message_content_type, TextMessageContent, ImageMessageContent, ToolCallMessageContent, ToolResultMessageContent
@@ -57,6 +57,10 @@ class MessageBuilder:
     
     def add_image(self, content: str, image_type: str):
         self.contents.append(ImageMessageContent(content=content, image_type=image_type))
+        return self
+    
+    def add_file(self, content: str, file_type: str):
+        self.contents.append(ImageMessageContent(content=content, image_type=file_type, type=MessageContentType.FILE))
         return self
     
     def add_tool_result(self, content: dict, tool_call_id: str):

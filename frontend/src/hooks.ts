@@ -79,15 +79,21 @@ function createMessageFormData(msg: MessageView): FormData {
     const formData = new FormData();
     const messageObj = {
         role: msg.role,
-        contents: msg.contents.map(content => ({
-            type: content.type,
-            content: content.content
+        contents: msg.contents.map(c => ({
+            type: c.type,
+            content: c.content,
+            ...(c.type === 'image' || c.type === 'file') && {image_type: c.image_type},
         }))
     }
     formData.append('message', JSON.stringify(messageObj));
     msg.contents.filter(content => content.type === 'image').forEach(content => {
         if (content.image) {
             formData.append('files', content.image);
+        }
+    });
+    msg.contents.filter(content => content.type === 'file').forEach(content => {
+        if (content.file) {
+            formData.append('files', content.file);
         }
     });
     return formData;

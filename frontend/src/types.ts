@@ -1,6 +1,6 @@
 export type Role = 'user' | 'assistant' | 'system' | 'tool';
 
-export type MessageContentTypeEnum = 'text' | 'image' | 'tool_call' | 'tool_result';
+export type MessageContentTypeEnum = 'text' | 'image' | 'tool_call' | 'tool_result' | 'file';
 
 export interface MessageContent {
     type: MessageContentTypeEnum;
@@ -16,6 +16,13 @@ export interface ImageMessageContent extends MessageContent {
     type: 'image';
     image_type: string;
     image?: File;
+    content: string;
+}
+
+export interface FileMessageContent extends MessageContent {
+    type: 'file';
+    image_type: string;
+    file?: File;
     content: string;
 }
 
@@ -36,7 +43,7 @@ export interface ToolCallMessageContent extends MessageContent {
     tool_call_id: string;
 }
 
-export type MessageContentType = TextMessageContent | ImageMessageContent | ToolCallMessageContent | ToolResultMessageContent;
+export type MessageContentType = TextMessageContent | ImageMessageContent | ToolCallMessageContent | ToolResultMessageContent | FileMessageContent;
 
 export interface RangedNumber {
     type: 'float' | 'int';
@@ -68,7 +75,7 @@ export type ModelConfig = Record<string, RangedNumber | OptionedString> & {tools
 
 export interface Message {
     role: Role;
-    contents: (TextMessageContent | ImageMessageContent | ToolCallMessageContent | ToolResultMessageContent)[];
+    contents: (TextMessageContent | ImageMessageContent | ToolCallMessageContent | ToolResultMessageContent | FileMessageContent)[];
     id: string;
     model?: string;
     config?: ModelConfig;

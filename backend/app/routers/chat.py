@@ -32,9 +32,9 @@ def create_chat(chat: schemas.ChatCreate, db: data.Session = Depends(dependencie
 def read_chat(chat: data.models.Chat = Depends(dependencies.get_chat)):
     return chat
 
-@router.get('/{chat_id}/images/{image_path}', response_class=FileResponse, dependencies=[Depends(dependencies.get_chat)])
-def read_image(chat_id: UUID4, image_path: str):
-    return f'images/{chat_id}/{image_path}'
+@router.get('/uploads/{chat_id}/{file_path}', response_class=FileResponse, dependencies=[Depends(dependencies.get_chat)])
+def read_upload(chat_id: UUID4, file_path: str):
+    return f'uploads/{chat_id}/{file_path}'
 
 @router.put('/{chat_id}', response_model=schemas.ChatView)
 def update_chat(chat: schemas.ChatCreate, db_chat: data.models.Chat = Depends(dependencies.get_chat), db: data.Session = Depends(dependencies.get_db), tools = Depends(dependencies.get_tools)):
@@ -108,7 +108,7 @@ def handle_tool_calls(message: schemas.Message, user_id: UUID4, chat_id: UUID4, 
     return db_msg
 
 @router.post('/{chat_id}/', response_model=schemas.MessageView)
-def send_message(chat_id: UUID4, current_user: schemas.User = Depends(dependencies.get_current_user), message: schemas.Message = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, schemas.ModelConfig] = Depends(dependencies.get_model), assistant_user = Depends(dependencies.get_assistant_user), tools = Depends(dependencies.get_tools)):
+def send_message(chat_id: UUID4, current_user: schemas.User = Depends(dependencies.get_current_user), message: schemas.Message = Depends(dependencies.save_files), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, schemas.ModelConfig] = Depends(dependencies.get_model), assistant_user = Depends(dependencies.get_assistant_user), tools = Depends(dependencies.get_tools)):
     chat: schemas.ChatFull = schemas.ChatFull.model_validate(db_chat, from_attributes=True)
     
     model, _ = model_with_config
@@ -183,7 +183,7 @@ def handle_stream(chat_id: UUID4, message: schemas.Message, chat: schemas.ChatFu
         return
 
 @router.post('/{chat_id}/stream/', response_model=dict)
-async def send_message_stream(background_tasks: BackgroundTasks, chat_id: UUID4, message = Depends(dependencies.save_images), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, schemas.ModelConfig] = Depends(dependencies.get_model)):
+async def send_message_stream(background_tasks: BackgroundTasks, chat_id: UUID4, message = Depends(dependencies.save_files), db: data.Session = Depends(dependencies.get_db), db_chat: data.models.Chat = Depends(dependencies.get_chat), model_with_config: tuple[chat_models.chat_model.ChatModel, schemas.ModelConfig] = Depends(dependencies.get_model)):
     chat: schemas.ChatFull = schemas.ChatFull.model_validate(db_chat, from_attributes=True)
     model, _ = model_with_config
 
